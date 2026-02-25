@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { localClient as base44 } from '@/api/localClient';
+import { localClient } from '@/api/localClient';
 import { format, parseISO } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -52,11 +52,11 @@ export default function SeizureTracker() {
 
   const { data: seizures = [], isLoading } = useQuery({
     queryKey: ['seizures'],
-    queryFn: () => base44.entities.Seizure.list('-date_time', 100),
+    queryFn: () => localClient.entities.Seizure.list('-date_time', 100),
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Seizure.create(data),
+    mutationFn: (data) => localClient.entities.Seizure.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['seizures'] });
       setShowForm(false);
@@ -64,7 +64,7 @@ export default function SeizureTracker() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Seizure.update(id, data),
+    mutationFn: ({ id, data }) => localClient.entities.Seizure.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['seizures'] });
       setShowForm(false);
@@ -73,7 +73,7 @@ export default function SeizureTracker() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Seizure.delete(id),
+    mutationFn: (id) => localClient.entities.Seizure.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['seizures'] });
       setDeleteId(null);

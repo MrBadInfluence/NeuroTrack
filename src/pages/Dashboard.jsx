@@ -1,6 +1,6 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { localClient as base44 } from '@/api/localClient';
+import { localClient } from '@/api/localClient';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { format, isToday, parseISO, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
@@ -25,22 +25,22 @@ import TodaysDoses from '@/components/dashboard/TodaysDoses';
 export default function Dashboard() {
   const { data: seizures = [] } = useQuery({
     queryKey: ['seizures'],
-    queryFn: () => base44.entities.Seizure.list('-date_time', 100),
+    queryFn: () => localClient.entities.Seizure.list('-date_time', 100),
   });
 
   const { data: medications = [] } = useQuery({
     queryKey: ['medications'],
-    queryFn: () => base44.entities.Medication.list('-created_date', 100),
+    queryFn: () => localClient.entities.Medication.list('-created_date', 100),
   });
 
   const { data: reminders = [] } = useQuery({
     queryKey: ['reminders'],
-    queryFn: () => base44.entities.MedicationReminder.list('-created_date', 100),
+    queryFn: () => localClient.entities.MedicationReminder.list('-created_date', 100),
   });
 
   const { data: doseLogs = [] } = useQuery({
     queryKey: ['doseLogs'],
-    queryFn: () => base44.entities.DoseLog.list('-created_date', 200),
+    queryFn: () => localClient.entities.DoseLog.list('-created_date', 200),
   });
 
   const activeMedications = medications.filter(m => m.is_active);

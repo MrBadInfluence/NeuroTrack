@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { localClient as base44 } from '@/api/localClient';
+import { localClient } from '@/api/localClient';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -55,16 +55,16 @@ export default function Reminders() {
 
   const { data: reminders = [], isLoading: loadingReminders } = useQuery({
     queryKey: ['reminders'],
-    queryFn: () => base44.entities.MedicationReminder.list('-created_date', 100),
+    queryFn: () => localClient.entities.MedicationReminder.list('-created_date', 100),
   });
 
   const { data: medications = [], isLoading: loadingMedications } = useQuery({
     queryKey: ['medications'],
-    queryFn: () => base44.entities.Medication.list('-created_date', 100),
+    queryFn: () => localClient.entities.Medication.list('-created_date', 100),
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.MedicationReminder.create(data),
+    mutationFn: (data) => localClient.entities.MedicationReminder.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reminders'] });
       setShowForm(false);
@@ -72,7 +72,7 @@ export default function Reminders() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.MedicationReminder.update(id, data),
+    mutationFn: ({ id, data }) => localClient.entities.MedicationReminder.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reminders'] });
       setShowForm(false);
@@ -81,7 +81,7 @@ export default function Reminders() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.MedicationReminder.delete(id),
+    mutationFn: (id) => localClient.entities.MedicationReminder.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reminders'] });
       setDeleteId(null);
@@ -89,7 +89,7 @@ export default function Reminders() {
   });
 
   const createDoseLogMutation = useMutation({
-    mutationFn: (data) => base44.entities.DoseLog.create(data),
+    mutationFn: (data) => localClient.entities.DoseLog.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['doseLogs'] });
       setShowPastDoseForm(false);

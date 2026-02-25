@@ -1,10 +1,10 @@
 /**
  * localClient.js
  *
- * Drop-in replacement for the Base44 SDK client.
+ * API client for NeuroTrack.
  * All data is stored in JSON files on disk via the local Express server (server.js).
  *
- * Exposes the same interface that the pages use:
+ * Exposes the interface that the pages use:
  *   localClient.entities.Seizure.list(orderBy, limit)
  *   localClient.entities.Seizure.create(data)
  *   localClient.entities.Seizure.update(id, data)

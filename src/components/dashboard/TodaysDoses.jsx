@@ -1,6 +1,6 @@
 import React from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { localClient as base44 } from '@/api/localClient';
+import { localClient } from '@/api/localClient';
 import { format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,7 @@ export default function TodaysDoses({ reminders, doseLogs }) {
   ).sort((a, b) => a.time.localeCompare(b.time));
 
   const logDoseMutation = useMutation({
-    mutationFn: (data) => base44.entities.DoseLog.create(data),
+    mutationFn: (data) => localClient.entities.DoseLog.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['doseLogs'] });
     },

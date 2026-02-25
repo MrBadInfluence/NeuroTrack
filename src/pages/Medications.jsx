@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { localClient as base44 } from '@/api/localClient';
+import { localClient } from '@/api/localClient';
 import { format, parseISO } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -47,11 +47,11 @@ export default function Medications() {
 
   const { data: medications = [], isLoading } = useQuery({
     queryKey: ['medications'],
-    queryFn: () => base44.entities.Medication.list('-created_date', 100),
+    queryFn: () => localClient.entities.Medication.list('-created_date', 100),
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Medication.create(data),
+    mutationFn: (data) => localClient.entities.Medication.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['medications'] });
       setShowForm(false);
@@ -59,7 +59,7 @@ export default function Medications() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Medication.update(id, data),
+    mutationFn: ({ id, data }) => localClient.entities.Medication.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['medications'] });
       setShowForm(false);
@@ -68,7 +68,7 @@ export default function Medications() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Medication.delete(id),
+    mutationFn: (id) => localClient.entities.Medication.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['medications'] });
       queryClient.invalidateQueries({ queryKey: ['reminders'] });
