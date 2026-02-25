@@ -1,10 +1,10 @@
 /**
  * localClient.js
  *
- * API client for NeuroTrack.
- * All data is stored in JSON files on disk via the local Express server (server.js).
+ * Device-local storage client for NeuroTrack.
+ * All data is persisted in localStorage on the device — no server required.
  *
- * Exposes the interface that the pages use:
+ * Interface:
  *   localClient.entities.Seizure.list(orderBy, limit)
  *   localClient.entities.Seizure.create(data)
  *   localClient.entities.Seizure.update(id, data)
@@ -12,53 +12,80 @@
  *   (same for Medication, MedicationReminder, DoseLog)
  */
 
-// Vite proxies /api → http://localhost:3001/api during development
-// In production you'd point this at your actual server
-const API_BASE = '/api';
+const STORAGE_KEYS = {
+  Seizure:            'neurotrack_seizures',
+  Medication:         'neurotrack_medications',
+  MedicationReminder: 'neurotrack_reminders',
+  DoseLog:            'neurotrack_dose_logs',
+};
 
-async function apiFetch(method, path, body) {
-  const opts = {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-  };
-  if (body !== undefined) opts.body = JSON.stringify(body);
-
-  const res = await fetch(`${API_BASE}${path}`, opts);
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || `HTTP ${res.status}`);
+function getRecords(entityName) {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEYS[entityName]) || '[]');
+  } catch {
+    return [];
   }
-  return res.json();
+}
+
+function saveRecords(entityName, records) {
+  localStorage.setItem(STORAGE_KEYS[entityName], JSON.stringify(records));
+}
+
+function sortRecords(records, orderBy) {
+  if (!orderBy) return records;
+  const desc = orderBy.startsWith('-');
+  const field = desc ? orderBy.slice(1) : orderBy;
+  return [...records].sort((a, b) => {
+    const av = a[field] ?? '';
+    const bv = b[field] ?? '';
+    if (av < bv) return desc ? 1 : -1;
+    if (av > bv) return desc ? -1 : 1;
+    return 0;
+  });
 }
 
 function makeEntity(entityName) {
   return {
-    /**
-     * List records, optionally sorted and limited.
-     * @param {string} orderBy  e.g. '-date_time' (descending) or 'created_date'
-     * @param {number} limit
-     */
     list(orderBy, limit) {
-      const params = new URLSearchParams();
-      if (orderBy) params.set('order_by', orderBy);
-      if (limit)   params.set('limit', limit);
-      const qs = params.toString() ? `?${params}` : '';
-      return apiFetch('GET', `/${entityName}${qs}`);
+      let records = getRecords(entityName);
+      if (orderBy) records = sortRecords(records, orderBy);
+      if (limit)   records = records.slice(0, limit);
+      return Promise.resolve(records);
     },
 
-    /** Create a new record. Returns the created record (with generated id). */
     create(data) {
-      return apiFetch('POST', `/${entityName}`, data);
+      const records = getRecords(entityName);
+      const now = new Date().toISOString();
+      const newRecord = {
+        ...data,
+        id: crypto.randomUUID(),
+        created_date: now,
+        updated_date: now,
+      };
+      records.push(newRecord);
+      saveRecords(entityName, records);
+      return Promise.resolve(newRecord);
     },
 
-    /** Update an existing record by id. Returns the updated record. */
     update(id, data) {
-      return apiFetch('PUT', `/${entityName}/${id}`, data);
+      const records = getRecords(entityName);
+      const idx = records.findIndex(r => r.id === id);
+      if (idx === -1) return Promise.reject(new Error('Record not found'));
+      records[idx] = {
+        ...records[idx],
+        ...data,
+        id,
+        created_date: records[idx].created_date,
+        updated_date: new Date().toISOString(),
+      };
+      saveRecords(entityName, records);
+      return Promise.resolve(records[idx]);
     },
 
-    /** Delete a record by id. */
     delete(id) {
-      return apiFetch('DELETE', `/${entityName}/${id}`);
+      const records = getRecords(entityName);
+      saveRecords(entityName, records.filter(r => r.id !== id));
+      return Promise.resolve({ id });
     },
   };
 }
