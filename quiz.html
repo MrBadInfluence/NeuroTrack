@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NeuroTrack – Codebase Quiz</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --indigo-50:  #eef2ff;
+      --indigo-100: #e0e7ff;
+      --indigo-400: #818cf8;
+      --indigo-500: #6366f1;
+      --indigo-600: #4f46e5;
+      --indigo-700: #4338ca;
+      --emerald-400: #34d399;
+      --emerald-500: #10b981;
+      --amber-400:  #fbbf24;
+      --amber-500:  #f59e0b;
+      --rose-400:   #fb7185;
+      --rose-500:   #f43f5e;
+      --slate-50:   #f8fafc;
+      --slate-100:  #f1f5f9;
+      --slate-200:  #e2e8f0;
+      --slate-300:  #cbd5e1;
+      --slate-400:  #94a3b8;
+      --slate-600:  #475569;
+      --slate-700:  #334155;
+      --slate-800:  #1e293b;
+      --slate-900:  #0f172a;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, var(--slate-900) 0%, #1a1040 50%, var(--slate-900) 100%);
+      min-height: 100vh;
+      color: var(--slate-100);
+      line-height: 1.6;
+    }
+
+    #root { min-height: 100vh; }
+
+    /* ── Layout ── */
+    .page { max-width: 760px; margin: 0 auto; padding: 32px 16px 64px; }
+
+    /* ── Header ── */
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    .header-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(99,102,241,.2);
+      border: 1px solid rgba(99,102,241,.4);
+      border-radius: 999px;
+      padding: 6px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--indigo-400);
+      margin-bottom: 16px;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+    }
+    .header h1 {
+      font-size: clamp(28px, 5vw, 42px);
+      font-weight: 800;
+      background: linear-gradient(135deg, #fff 0%, var(--indigo-400) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+    }
+    .header p {
+      color: var(--slate-400);
+      font-size: 15px;
+    }
+
+    /* ── Progress bar ── */
+    .progress-wrap {
+      margin-bottom: 28px;
+    }
+    .progress-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      color: var(--slate-400);
+      margin-bottom: 8px;
+    }
+    .progress-track {
+      height: 6px;
+      background: rgba(255,255,255,.1);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--indigo-500), var(--indigo-400));
+      transition: width .4s ease;
+    }
+
+    /* ── Score strip ── */
+    .score-strip {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+    }
+    .score-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 999px;
+      padding: 6px 14px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .score-pill .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+    }
+    .dot-correct  { background: var(--emerald-500); }
+    .dot-wrong    { background: var(--rose-500); }
+    .dot-pending  { background: var(--slate-400); }
+
+    /* ── Category tag ── */
+    .category-tag {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+      border-radius: 4px;
+      padding: 3px 8px;
+      margin-bottom: 12px;
+    }
+
+    /* ── Question card ── */
+    .card {
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 16px;
+      padding: 28px;
+      margin-bottom: 20px;
+      backdrop-filter: blur(12px);
+      transition: border-color .2s;
+    }
+    .card:hover { border-color: rgba(99,102,241,.35); }
+
+    .question-number {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--slate-400);
+      margin-bottom: 8px;
+    }
+    .question-text {
+      font-size: 17px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 20px;
+    }
+
+    /* ── Options ── */
+    .options { display: flex; flex-direction: column; gap: 10px; }
+
+    .option-btn {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(255,255,255,.05);
+      border: 1.5px solid rgba(255,255,255,.12);
+      border-radius: 10px;
+      padding: 13px 16px;
+      text-align: left;
+      cursor: pointer;
+      color: var(--slate-200);
+      font-size: 15px;
+      font-family: inherit;
+      transition: all .15s ease;
+      width: 100%;
+    }
+    .option-btn:hover:not(:disabled) {
+      background: rgba(99,102,241,.15);
+      border-color: var(--indigo-500);
+      color: #fff;
+    }
+    .option-btn:disabled { cursor: default; }
+
+    .option-btn.correct {
+      background: rgba(16,185,129,.15);
+      border-color: var(--emerald-500);
+      color: #fff;
+    }
+    .option-btn.wrong {
+      background: rgba(244,63,94,.12);
+      border-color: var(--rose-500);
+      color: #fff;
+    }
+    .option-btn.revealed {
+      background: rgba(16,185,129,.08);
+      border-color: rgba(16,185,129,.4);
+      color: var(--emerald-400);
+    }
+
+    .option-letter {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.08);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700;
+      flex-shrink: 0;
+    }
+    .correct  .option-letter { background: var(--emerald-500); color: #fff; }
+    .wrong    .option-letter { background: var(--rose-500);    color: #fff; }
+    .revealed .option-letter { background: rgba(16,185,129,.3); color: var(--emerald-400); }
+
+    /* ── Explanation ── */
+    .explanation {
+      margin-top: 14px;
+      padding: 12px 16px;
+      background: rgba(99,102,241,.1);
+      border-left: 3px solid var(--indigo-500);
+      border-radius: 0 8px 8px 0;
+      font-size: 14px;
+      color: var(--slate-300);
+      animation: fadeIn .3s ease;
+    }
+    .explanation strong { color: var(--indigo-400); }
+
+    /* ── Code snippet ── */
+    .code-hint {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      background: rgba(0,0,0,.3);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 13px;
+      color: var(--emerald-400);
+      margin: 12px 0;
+      overflow-x: auto;
+      white-space: pre;
+    }
+
+    /* ── Navigation ── */
+    .nav-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 8px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 11px 22px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all .15s ease;
+      border: none;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--indigo-600), var(--indigo-500));
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(99,102,241,.35);
+    }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(99,102,241,.45); }
+    .btn-ghost {
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.12);
+      color: var(--slate-300);
+    }
+    .btn-ghost:hover { background: rgba(255,255,255,.1); color: #fff; }
+    .btn:disabled { opacity: .4; cursor: default; transform: none !important; }
+
+    /* ── Results ── */
+    .results-card {
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 20px;
+      padding: 40px 28px;
+      text-align: center;
+      backdrop-filter: blur(12px);
+    }
+    .results-emoji { font-size: 56px; margin-bottom: 16px; }
+    .results-title {
+      font-size: 28px;
+      font-weight: 800;
+      margin-bottom: 8px;
+      color: #fff;
+    }
+    .results-subtitle {
+      color: var(--slate-400);
+      font-size: 15px;
+      margin-bottom: 32px;
+    }
+    .score-big {
+      font-size: 64px;
+      font-weight: 900;
+      background: linear-gradient(135deg, var(--indigo-400), var(--emerald-400));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    .score-label { color: var(--slate-400); font-size: 14px; margin-bottom: 32px; }
+
+    .results-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .results-stat {
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .results-stat .val {
+      font-size: 26px;
+      font-weight: 800;
+      color: #fff;
+    }
+    .results-stat .lbl {
+      font-size: 12px;
+      color: var(--slate-400);
+      margin-top: 2px;
+    }
+    .correct-val  { color: var(--emerald-400) !important; }
+    .wrong-val    { color: var(--rose-400) !important; }
+
+    .category-breakdown {
+      text-align: left;
+      margin-bottom: 32px;
+    }
+    .breakdown-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: var(--slate-400);
+      margin-bottom: 12px;
+    }
+    .breakdown-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      font-size: 14px;
+    }
+    .breakdown-bar-wrap {
+      flex: 1;
+      height: 6px;
+      background: rgba(255,255,255,.08);
+      border-radius: 999px;
+      margin: 0 12px;
+      overflow: hidden;
+    }
+    .breakdown-bar {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--indigo-500), var(--indigo-400));
+      transition: width .6s ease;
+    }
+    .breakdown-score { font-weight: 700; min-width: 40px; text-align: right; font-size: 13px; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Splash/start screen ── */
+    .splash {
+      text-align: center;
+      padding: 40px 0;
+    }
+    .splash-icon {
+      width: 80px; height: 80px;
+      border-radius: 24px;
+      background: linear-gradient(135deg, var(--indigo-600), var(--indigo-400));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 36px;
+      margin: 0 auto 24px;
+      box-shadow: 0 8px 32px rgba(99,102,241,.4);
+    }
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin: 28px 0 36px;
+      text-align: left;
+    }
+    .feature-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 12px;
+      padding: 14px;
+    }
+    .feature-icon { font-size: 20px; flex-shrink: 0; }
+    .feature-text { font-size: 13px; color: var(--slate-300); }
+    .feature-text strong { display: block; color: #fff; margin-bottom: 2px; font-size: 14px; }
+
+    @media (max-width: 480px) {
+      .feature-grid { grid-template-columns: 1fr; }
+      .results-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+      .card { padding: 20px 16px; }
+    }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useCallback } = React;
+
+/* ──────────────────────────────────────────
+   QUIZ DATA
+────────────────────────────────────────── */
+const QUESTIONS = [
+  /* ── PURPOSE ── */
+  {
+    id: 1,
+    category: "Project Purpose",
+    categoryColor: "#818cf8",
+    text: "What medical condition is NeuroTrack primarily designed to help users manage?",
+    options: ["Diabetes and blood-sugar levels", "Epilepsy and seizure disorders", "Hypertension and cardiac events", "Alzheimer's disease and memory loss"],
+    answer: 1,
+    explanation: "NeuroTrack is a personal health companion built specifically for people with <strong>epilepsy/seizure disorders</strong>. It helps users log seizures, manage anti-seizure medications, set medication reminders, and monitor patterns over time.",
+  },
+  {
+    id: 2,
+    category: "Project Purpose",
+    categoryColor: "#818cf8",
+    text: "Which of the following best describes NeuroTrack's approach to personal/profile data (name, emergency contacts, neurologist info)?",
+    options: ["Encrypted and synced to Supabase cloud", "Stored only in device AsyncStorage — never sent to the server", "Pushed to a FHIR-compliant healthcare API", "Stored in a SQLite database with Row-Level Security"],
+    answer: 1,
+    explanation: "<strong>Profile, emergency contact, and neurologist data are stored exclusively in AsyncStorage</strong> on the device and are never uploaded to the backend. This privacy-first design keeps sensitive personal information off the server entirely.",
+  },
+  {
+    id: 3,
+    category: "Project Purpose",
+    categoryColor: "#818cf8",
+    text: "How many slides does the NeuroTrack onboarding flow contain?",
+    options: ["3", "4", "6", "8"],
+    answer: 2,
+    explanation: "The onboarding flow in <code>src/screens/Onboarding.jsx</code> presents <strong>6 slides</strong> to first-time users via horizontal swipe gestures. An AsyncStorage flag (<code>neurotrack_onboarded</code>) prevents it from reappearing after completion.",
+  },
+
+  /* ── TECH STACK ── */
+  {
+    id: 4,
+    category: "Tech Stack",
+    categoryColor: "#fbbf24",
+    text: "Which platform and framework power the NeuroTrack mobile application?",
+    options: ["Flutter + Dart", "Ionic + Angular", "React Native + Expo", "NativeScript + Vue"],
+    answer: 2,
+    explanation: "NeuroTrack is built with <strong>React Native (v0.85.3)</strong> and the <strong>Expo (v56.0.8)</strong> platform, enabling cross-platform iOS and Android development from a single JavaScript/JSX codebase.",
+  },
+  {
+    id: 5,
+    category: "Tech Stack",
+    categoryColor: "#fbbf24",
+    text: "Which library manages server-state, caching, and data fetching throughout the app?",
+    options: ["Redux Toolkit Query", "SWR (stale-while-revalidate)", "TanStack React Query v5", "Apollo Client"],
+    answer: 2,
+    explanation: "<strong>TanStack React Query v5 (v5.100.14)</strong> is the data-fetching layer. It caches responses for 5 minutes, retries once on failure, and the app invalidates query caches after any create/update/delete mutation to keep data fresh.",
+  },
+  {
+    id: 6,
+    category: "Tech Stack",
+    categoryColor: "#fbbf24",
+    text: "What is the backend-as-a-service that NeuroTrack uses for its PostgreSQL database and REST API?",
+    options: ["Firebase Firestore", "Supabase", "PlanetScale", "AWS Amplify"],
+    answer: 1,
+    explanation: "<strong>Supabase (v2.106.2)</strong> provides the hosted PostgreSQL database and auto-generated REST API. The Supabase client is initialised as a singleton in <code>src/lib/supabase.js</code> and accessed through the wrapper in <code>src/api/localClient.js</code>.",
+  },
+  {
+    id: 7,
+    category: "Tech Stack",
+    categoryColor: "#fbbf24",
+    text: "Which library is used for date formatting and manipulation (e.g. formatting seizure timestamps)?",
+    options: ["moment.js", "Luxon", "dayjs", "date-fns"],
+    answer: 3,
+    explanation: "<strong>date-fns (v4.4.0)</strong> handles all date/time formatting. It is a modular, tree-shakeable alternative to Moment.js and is used across screens to display formatted timestamps, scheduled times, and date ranges.",
+  },
+  {
+    id: 8,
+    category: "Tech Stack",
+    categoryColor: "#fbbf24",
+    text: "Which package enables the drag-to-reorder sections on the Dashboard?",
+    options: ["react-native-sortable-list", "react-native-draggable-flatlist", "react-native-drag-sort", "@shopify/draggable"],
+    answer: 1,
+    explanation: "<strong>react-native-draggable-flatlist (v4.0.3)</strong> provides the drag-and-drop reorder capability on the Dashboard. The section order is persisted in AsyncStorage under the key <code>neurotrack_dashboard_order</code> so the layout survives app restarts.",
+  },
+
+  /* ── DATA MODELS ── */
+  {
+    id: 9,
+    category: "Data Models",
+    categoryColor: "#34d399",
+    text: "Which field is used to record whether a seizure occurred during sleep?",
+    options: ["sleep_related (boolean)", "nocturnal (boolean)", "overnight_event (string)", "time_of_day (enum)"],
+    answer: 1,
+    explanation: "The <strong>seizures</strong> table includes a <code>nocturnal</code> boolean field that flags whether the event happened during sleep. This helps users and neurologists identify patterns in nocturnal seizure activity.",
+  },
+  {
+    id: 10,
+    category: "Data Models",
+    categoryColor: "#34d399",
+    text: "In the dose_logs table, what are the three possible values for the `status` field?",
+    options: ["pending / completed / cancelled", "taken / skipped / missed", "yes / no / unknown", "logged / unlogged / overdue"],
+    answer: 1,
+    explanation: "Each row in <strong>dose_logs</strong> has a <code>status</code> of <strong>taken</strong>, <strong>skipped</strong>, or <strong>missed</strong>. Only 'taken' entries populate <code>taken_at</code> with an ISO timestamp; the others leave it null.",
+  },
+  {
+    id: 11,
+    category: "Data Models",
+    categoryColor: "#34d399",
+    text: "In what format does the medication_reminders table store the reminder time?",
+    options: ["Unix epoch (seconds)", "ISO 8601 datetime string", "HH:mm (24-hour string)", "Date object"],
+    answer: 2,
+    explanation: "The <code>time</code> column in <strong>medication_reminders</strong> stores a simple <strong>HH:mm</strong> string (e.g. '08:30'). The <code>days_of_week</code> column stores an array of day names indicating which days the reminder should fire.",
+  },
+  {
+    id: 12,
+    category: "Data Models",
+    categoryColor: "#34d399",
+    text: "What happens to a medication's reminders when that medication is deleted?",
+    options: ["Reminders remain but become orphaned", "Reminders are soft-deleted (is_active set to false)", "Reminders are cascade-deleted automatically", "The user is warned but nothing is deleted"],
+    answer: 2,
+    explanation: "The Medications screen performs a <strong>cascading delete</strong>: when a medication is removed, the app also deletes all <code>medication_reminders</code> that reference that medication. This prevents orphaned reminder records in the database.",
+  },
+  {
+    id: 13,
+    category: "Data Models",
+    categoryColor: "#34d399",
+    text: "What are the valid severity levels for a seizure entry?",
+    options: ["low / medium / high", "minor / major / critical", "mild / moderate / severe", "grade-1 / grade-2 / grade-3"],
+    answer: 2,
+    explanation: "The <code>severity</code> field in the <strong>seizures</strong> table accepts <strong>mild</strong>, <strong>moderate</strong>, or <strong>severe</strong>. The SeizureTracker screen renders colour-coded badges for each level to give quick visual feedback.",
+  },
+
+  /* ── SCREENS & FEATURES ── */
+  {
+    id: 14,
+    category: "Screens & Features",
+    categoryColor: "#f43f5e",
+    text: "How many stat cards are displayed at the top of the Dashboard screen?",
+    options: ["2", "3", "4", "6"],
+    answer: 2,
+    explanation: "The Dashboard shows <strong>4 StatCard</strong> components: <em>Seizures This Month</em>, <em>Active Medications</em>, <em>Active Reminders</em>, and <em>Total Seizures</em>. Each card shows a metric, a label, and an icon.",
+  },
+  {
+    id: 15,
+    category: "Screens & Features",
+    categoryColor: "#f43f5e",
+    text: "How many distinct seizure types does the SeizureTypeInfo reference guide cover (plus Unknown)?",
+    options: ["5", "7", "9 + Unknown", "12 + Unknown"],
+    answer: 2,
+    explanation: "The <code>SeizureTypeInfo</code> component documents <strong>9 named seizure types</strong> (e.g. Focal Aware, Generalized Tonic-Clonic, Absence, Atonic, etc.) plus an <em>Unknown</em> option — 10 options in total — giving users an educational guide for accurate self-reporting.",
+  },
+  {
+    id: 16,
+    category: "Screens & Features",
+    categoryColor: "#f43f5e",
+    text: "On the Medications screen, what two tabs allow users to separate their drug list?",
+    options: ["Current / Historical", "Active / Inactive", "Prescribed / OTC", "Daily / As-needed"],
+    answer: 1,
+    explanation: "The Medications screen has <strong>Active</strong> and <strong>Inactive</strong> tabs, toggling the <code>is_active</code> field filter. This lets users archive medications they're no longer taking while preserving the full history.",
+  },
+  {
+    id: 17,
+    category: "Screens & Features",
+    categoryColor: "#f43f5e",
+    text: "Which screen is DISABLED when there are no active medications?",
+    options: ["Dashboard", "SeizureTracker", "Reminders", "Profile"],
+    answer: 2,
+    explanation: "The <strong>Reminders</strong> screen is disabled (and shows a prompt to add medications first) when no active medications exist. This prevents creating reminders that have no associated medication to reference.",
+  },
+  {
+    id: 18,
+    category: "Screens & Features",
+    categoryColor: "#f43f5e",
+    text: "What feature in the Medications form helps users quickly find correct drug names?",
+    options: ["Voice recognition input", "Barcode scanner", "Medication autocomplete with a built-in list of 20 drugs", "ICD-10 code lookup"],
+    answer: 2,
+    explanation: "The <code>MedicationForm</code> component includes a <strong>medication autocomplete</strong> field backed by a built-in list of 20 common anti-seizure medications (e.g. Levetiracetam, Lamotrigine, Valproate). Users can also free-type if their drug isn't listed.",
+  },
+
+  /* ── COMPONENTS ── */
+  {
+    id: 19,
+    category: "UI Components",
+    categoryColor: "#a78bfa",
+    text: "The AppButton component supports multiple visual variants. Which of the following is NOT a valid variant?",
+    options: ["primary", "outline", "ghost", "secondary"],
+    answer: 3,
+    explanation: "<code>AppButton</code> supports <strong>primary</strong> (gradient fill), <strong>outline</strong> (transparent with border), <strong>ghost</strong> (minimal, no border), and <strong>danger</strong> (rose-coloured for destructive actions). There is no 'secondary' variant.",
+  },
+  {
+    id: 20,
+    category: "UI Components",
+    categoryColor: "#a78bfa",
+    text: "What underlying mechanism does AppModal use to present options (e.g. AppSelect dropdowns)?",
+    options: ["React Native ActionSheet", "A slide-up modal sheet with keyboard-aware scrolling", "A full-screen navigation push", "Inline accordion expansion"],
+    answer: 1,
+    explanation: "<code>AppModal</code> renders a <strong>slide-up bottom sheet</strong> with keyboard-aware handling so it repositions correctly when the software keyboard appears. It wraps the shared selector and confirmation dialogs used throughout the app.",
+  },
+  {
+    id: 21,
+    category: "UI Components",
+    categoryColor: "#a78bfa",
+    text: "Which dashboard-specific component shows the user's medication schedule for the current day with mark-taken and skip actions?",
+    options: ["MissedDosesSummary", "MonthSummary", "TodaysDoses", "DoseLogCard"],
+    answer: 2,
+    explanation: "<strong>TodaysDoses</strong> is the dashboard component that lists each active reminder due today, letting the user mark a dose as <em>taken</em> or <em>skipped</em> inline without navigating away from the Dashboard.",
+  },
+
+  /* ── NAVIGATION ── */
+  {
+    id: 22,
+    category: "Navigation",
+    categoryColor: "#f59e0b",
+    text: "What type of navigator sits at the root of the app in AppNavigator.jsx?",
+    options: ["Drawer Navigator", "Stack Navigator wrapping a Bottom Tab Navigator", "Material Top Tab Navigator", "Native Stack only"],
+    answer: 1,
+    explanation: "The root is a <strong>Stack Navigator</strong> (RootStack) that hosts the <strong>Bottom Tab Navigator</strong> (MainTabs) as its primary screen, plus the Profile screen as a modal-style stack screen layered on top.",
+  },
+  {
+    id: 23,
+    category: "Navigation",
+    categoryColor: "#f59e0b",
+    text: "How does the user navigate to the Profile screen?",
+    options: ["Via a dedicated 5th tab in the bottom tab bar", "Through a drawer menu accessed by swiping left", "Via an avatar button in the shared header (or swiping up from the tab bar)", "From the Settings item inside the Dashboard"],
+    answer: 2,
+    explanation: "Profile is accessed through an <strong>avatar button in the shared header</strong> on all screens. The navigation config also supports <em>swiping up</em> from the tab bar, making Profile feel distinct from the main four tabs.",
+  },
+
+  /* ── STORAGE & STATE ── */
+  {
+    id: 24,
+    category: "Storage & State",
+    categoryColor: "#10b981",
+    text: "Under which AsyncStorage key is the user's customised Dashboard section order persisted?",
+    options: ["neurotrack_sections", "dashboard_layout", "neurotrack_dashboard_order", "nt_prefs"],
+    answer: 2,
+    explanation: "The draggable dashboard order is saved under the key <strong><code>neurotrack_dashboard_order</code></strong>. The other profile-related keys are <code>neurotrack_onboarded</code>, <code>neurotrack_profile</code>, and <code>neurotrack_avatar</code>.",
+  },
+  {
+    id: 25,
+    category: "Storage & State",
+    categoryColor: "#10b981",
+    text: "What is the React Query staleTime configured to in NeuroTrack's queryClient?",
+    options: ["30 seconds", "2 minutes", "5 minutes", "15 minutes"],
+    answer: 2,
+    explanation: "<code>src/utils/queryClient.js</code> configures <strong>staleTime: 5 minutes</strong> (300 000 ms). Queries remain fresh for this period, reducing redundant network calls while still auto-refetching when the user navigates back to a screen after the window elapses.",
+  },
+];
+
+/* ──────────────────────────────────────────
+   HELPERS
+────────────────────────────────────────── */
+const LETTERS = ['A', 'B', 'C', 'D'];
+
+function categoryStats(questions, answers) {
+  const map = {};
+  questions.forEach(q => {
+    if (!map[q.category]) map[q.category] = { total: 0, correct: 0, color: q.categoryColor };
+    map[q.category].total++;
+    if (answers[q.id] === q.answer) map[q.category].correct++;
+  });
+  return map;
+}
+
+function gradeInfo(pct) {
+  if (pct >= 90) return { emoji: '🏆', title: 'Expert!', sub: 'You know NeuroTrack inside-out.' };
+  if (pct >= 70) return { emoji: '🎯', title: 'Impressive!', sub: 'Strong grasp of the codebase.' };
+  if (pct >= 50) return { emoji: '📚', title: 'Getting There', sub: 'A few more read-throughs and you\'ll ace it.' };
+  return { emoji: '🔍', title: 'Keep Exploring', sub: 'Dig deeper into the source files!' };
+}
+
+/* ──────────────────────────────────────────
+   COMPONENTS
+────────────────────────────────────────── */
+function CategoryTag({ label, color }) {
+  return (
+    <span className="category-tag" style={{ background: color + '22', color, border: `1px solid ${color}44` }}>
+      {label}
+    </span>
+  );
+}
+
+function QuestionCard({ question, selectedAnswer, onSelect }) {
+  const answered = selectedAnswer !== null && selectedAnswer !== undefined;
+
+  return (
+    <div className="card">
+      <CategoryTag label={question.category} color={question.categoryColor} />
+      <div className="question-number">Question {question.id} of {QUESTIONS.length}</div>
+      <div className="question-text">{question.text}</div>
+
+      <div className="options">
+        {question.options.map((opt, i) => {
+          let cls = 'option-btn';
+          if (answered) {
+            if (i === question.answer) cls += ' correct';
+            else if (i === selectedAnswer) cls += ' wrong';
+          }
+          return (
+            <button
+              key={i}
+              className={cls}
+              onClick={() => !answered && onSelect(i)}
+              disabled={answered}
+            >
+              <span className="option-letter">{LETTERS[i]}</span>
+              <span>{opt}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {answered && (
+        <div
+          className="explanation"
+          dangerouslySetInnerHTML={{ __html: question.explanation }}
+        />
+      )}
+    </div>
+  );
+}
+
+function StartScreen({ onStart }) {
+  return (
+    <div className="splash">
+      <div className="splash-icon">🧠</div>
+      <h2 style={{ fontSize: 26, fontWeight: 800, marginBottom: 8 }}>NeuroTrack Codebase Quiz</h2>
+      <p style={{ color: 'var(--slate-400)', fontSize: 15, maxWidth: 480, margin: '0 auto 24px' }}>
+        Test your knowledge of the NeuroTrack React Native app — from architecture and data models
+        to components, navigation, and storage strategy.
+      </p>
+
+      <div className="feature-grid">
+        {[
+          ['🏗️', 'Architecture', '25 questions across 8 categories'],
+          ['💊', 'Features', 'Seizures, Meds, Reminders & more'],
+          ['🗄️', 'Data Models', 'Supabase schema & AsyncStorage'],
+          ['🎨', 'Components', 'UI building blocks & navigation'],
+        ].map(([icon, title, desc]) => (
+          <div className="feature-item" key={title}>
+            <span className="feature-icon">{icon}</span>
+            <span className="feature-text">
+              <strong>{title}</strong>{desc}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      <button className="btn btn-primary" onClick={onStart} style={{ fontSize: 16, padding: '14px 36px' }}>
+        Start Quiz →
+      </button>
+    </div>
+  );
+}
+
+function ResultsScreen({ answers, onRestart }) {
+  const total   = QUESTIONS.length;
+  const correct = QUESTIONS.filter(q => answers[q.id] === q.answer).length;
+  const wrong   = Object.keys(answers).length - correct;
+  const pct     = Math.round((correct / total) * 100);
+  const grade   = gradeInfo(pct);
+  const cats    = categoryStats(QUESTIONS, answers);
+
+  return (
+    <div className="results-card">
+      <div className="results-emoji">{grade.emoji}</div>
+      <div className="results-title">{grade.title}</div>
+      <div className="results-subtitle">{grade.sub}</div>
+
+      <div className="score-big">{pct}%</div>
+      <div className="score-label">Overall Score</div>
+
+      <div className="results-grid">
+        <div className="results-stat">
+          <div className="val correct-val">{correct}</div>
+          <div className="lbl">Correct</div>
+        </div>
+        <div className="results-stat">
+          <div className="val wrong-val">{wrong}</div>
+          <div className="lbl">Wrong</div>
+        </div>
+        <div className="results-stat">
+          <div className="val">{total}</div>
+          <div className="lbl">Total</div>
+        </div>
+      </div>
+
+      <div className="category-breakdown">
+        <div class="breakdown-title">Score by Category</div>
+        {Object.entries(cats).map(([cat, { total: t, correct: c, color }]) => (
+          <div className="breakdown-row" key={cat}>
+            <span style={{ color, fontWeight: 600, fontSize: 13, minWidth: 130 }}>{cat}</span>
+            <div className="breakdown-bar-wrap">
+              <div className="breakdown-bar" style={{ width: `${Math.round((c / t) * 100)}%`, background: `linear-gradient(90deg, ${color}, ${color}99)` }} />
+            </div>
+            <span className="breakdown-score" style={{ color }}>{c}/{t}</span>
+          </div>
+        ))}
+      </div>
+
+      <button className="btn btn-primary" onClick={onRestart} style={{ fontSize: 15, padding: '13px 32px' }}>
+        Retake Quiz
+      </button>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────
+   MAIN APP
+────────────────────────────────────────── */
+function App() {
+  const [stage, setStage]       = useState('start'); // start | quiz | results
+  const [current, setCurrent]   = useState(0);
+  const [answers, setAnswers]   = useState({});
+
+  const question = QUESTIONS[current];
+  const answered = answers[question?.id] !== undefined;
+
+  const handleSelect = useCallback((optionIndex) => {
+    setAnswers(prev => ({ ...prev, [question.id]: optionIndex }));
+  }, [question]);
+
+  const handleNext = () => {
+    if (current < QUESTIONS.length - 1) setCurrent(c => c + 1);
+    else setStage('results');
+  };
+
+  const handlePrev = () => {
+    if (current > 0) setCurrent(c => c - 1);
+  };
+
+  const handleRestart = () => {
+    setAnswers({});
+    setCurrent(0);
+    setStage('start');
+  };
+
+  const correctSoFar = QUESTIONS.slice(0, current + 1).filter(q => answers[q.id] === q.answer).length;
+  const answeredCount = Object.keys(answers).length;
+
+  return (
+    <div className="page">
+      <div className="header">
+        <div className="header-badge">🧠 NeuroTrack</div>
+        <h1>Codebase Quiz</h1>
+        <p>How well do you know the architecture, data models, and features?</p>
+      </div>
+
+      {stage === 'start' && <StartScreen onStart={() => setStage('quiz')} />}
+
+      {stage === 'quiz' && (
+        <>
+          <div className="progress-wrap">
+            <div className="progress-meta">
+              <span>Question {current + 1} of {QUESTIONS.length}</span>
+              <span>{answeredCount} answered</span>
+            </div>
+            <div className="progress-track">
+              <div className="progress-fill" style={{ width: `${((current + 1) / QUESTIONS.length) * 100}%` }} />
+            </div>
+          </div>
+
+          <div className="score-strip">
+            <div className="score-pill">
+              <span className="dot dot-correct" />
+              {correctSoFar} Correct
+            </div>
+            <div className="score-pill">
+              <span className="dot dot-wrong" />
+              {answeredCount - correctSoFar} Wrong
+            </div>
+            <div className="score-pill">
+              <span className="dot dot-pending" />
+              {QUESTIONS.length - answeredCount} Remaining
+            </div>
+          </div>
+
+          <QuestionCard
+            question={question}
+            selectedAnswer={answers[question.id]}
+            onSelect={handleSelect}
+          />
+
+          <div className="nav-row">
+            <button className="btn btn-ghost" onClick={handlePrev} disabled={current === 0}>
+              ← Previous
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={handleNext}
+              disabled={!answered}
+            >
+              {current === QUESTIONS.length - 1 ? 'See Results 🏁' : 'Next →'}
+            </button>
+          </div>
+        </>
+      )}
+
+      {stage === 'results' && (
+        <ResultsScreen answers={answers} onRestart={handleRestart} />
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
