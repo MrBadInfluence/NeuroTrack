@@ -14,10 +14,14 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { localClient } from '../../api/localClient';
 import { format } from 'date-fns';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import AppButton from '../ui/AppButton';
-import { colors } from '../../theme/colors';
+import { colors, getTheme } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 
 export default function TodaysDoses({ reminders, doseLogs }) {
+  const { isDark } = useTheme();
+  const t = getTheme(isDark);
   const queryClient = useQueryClient();
   // ISO date string for today (yyyy-MM-dd) used to match dose log records
   const today      = format(new Date(), 'yyyy-MM-dd');
@@ -45,6 +49,11 @@ export default function TodaysDoses({ reminders, doseLogs }) {
 
   // Create a dose log entry; only sets taken_at timestamp when status is 'taken'
   const markDose = (reminder, status) => {
+    if (status === 'taken') {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } else {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
     logDoseMutation.mutate({
       medication_id:   reminder.medication_id,
       medication_name: reminder.medication_name,
@@ -58,10 +67,13 @@ export default function TodaysDoses({ reminders, doseLogs }) {
   if (todaysReminders.length === 0) return null;
 
   return (
-    <LinearGradient colors={[colors.cyan50, '#ecfeff']} style={styles.card}>
+    <LinearGradient
+      colors={isDark ? [t.cardGradientTeal[0], t.cardGradientTeal[1]] : [colors.cyan50, '#ecfeff']}
+      style={[styles.card, { borderColor: isDark ? t.cardBorderTeal : '#a5f3fc' }]}
+    >
       <View style={styles.header}>
         <Ionicons name="time-outline" size={18} color={colors.teal700} />
-        <Text style={styles.headerText}>Today's Doses</Text>
+        <Text style={[styles.headerText, { color: isDark ? colors.teal300 : colors.teal900 }]}>Today's Doses</Text>
       </View>
 
       {todaysReminders.map((reminder, index) => {
@@ -72,22 +84,22 @@ export default function TodaysDoses({ reminders, doseLogs }) {
         // Card border, background, icon background, icon name, and icon color
         // all vary based on whether the dose was taken, missed, skipped, or pending
         const borderColor =
-          status === 'taken'   ? colors.green200 :
-          status === 'missed'  ? colors.red200   :
-          status === 'skipped' ? colors.slate200 :
-          colors.teal100;
+          status === 'taken'   ? (isDark ? colors.green700   : colors.green200) :
+          status === 'missed'  ? (isDark ? colors.red700     : colors.red200)   :
+          status === 'skipped' ? (isDark ? colors.slate600   : colors.slate200) :
+          (isDark ? colors.teal700 : colors.teal100);
 
         const bgColor =
-          status === 'taken'   ? '#f0fdf4' :
-          status === 'missed'  ? '#fef2f2' :
-          status === 'skipped' ? colors.slate50 :
-          colors.white;
+          status === 'taken'   ? (isDark ? colors.green900   : '#f0fdf4') :
+          status === 'missed'  ? (isDark ? '#2a0a0a'         : '#fef2f2') :
+          status === 'skipped' ? (isDark ? colors.slate700   : colors.slate50) :
+          t.surface;
 
         const iconBg =
-          status === 'taken'   ? colors.green100 :
-          status === 'missed'  ? colors.red100   :
-          status === 'skipped' ? colors.slate100 :
-          '#ccfbf1';
+          status === 'taken'   ? (isDark ? colors.green900   : colors.green100) :
+          status === 'missed'  ? (isDark ? '#2a0a0a'         : colors.red100)   :
+          status === 'skipped' ? (isDark ? colors.slate700   : colors.slate100) :
+          (isDark ? colors.teal900 : '#ccfbf1');
 
         const iconName =
           status === 'taken'   ? 'checkmark'    :
@@ -108,8 +120,8 @@ export default function TodaysDoses({ reminders, doseLogs }) {
                 <Ionicons name={iconName} size={20} color={iconColor} />
               </View>
               <View style={styles.doseInfo}>
-                <Text style={styles.medName}>{reminder.medication_name}</Text>
-                <Text style={styles.schedTime}>Scheduled: {reminder.time}</Text>
+                <Text style={[styles.medName, { color: t.text }]}>{reminder.medication_name}</Text>
+                <Text style={[styles.schedTime, { color: t.textMuted }]}>Scheduled: {reminder.time}</Text>
               </View>
               {status !== 'pending' && (
                 <View style={[styles.badge, {
@@ -136,6 +148,8 @@ export default function TodaysDoses({ reminders, doseLogs }) {
                   size="sm"
                   gradient={[colors.green600, colors.emerald600]}
                   onPress={() => markDose(reminder, 'taken')}
+                  disabled={logDoseMutation.isPending}
+                  loading={logDoseMutation.isPending}
                   style={styles.actionBtn}
                 >
                   ✓  Mark Taken
@@ -144,6 +158,7 @@ export default function TodaysDoses({ reminders, doseLogs }) {
                   size="sm"
                   variant="outline"
                   onPress={() => markDose(reminder, isPast ? 'missed' : 'skipped')}
+                  disabled={logDoseMutation.isPending}
                   style={styles.actionBtn}
                 >
                   {`✕  ${isPast ? 'Missed' : 'Skip'}`}

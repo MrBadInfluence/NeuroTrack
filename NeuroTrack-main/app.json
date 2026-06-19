@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "NeuroTrack",
+    "slug": "NeuroTrack_RN",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/play_store_512.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/play_store_512.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.mrbadinfluence.NeuroTrack"
+    },
+    "web": {
+      "favicon": "./assets/NeuroTrackCANVAimage3.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "d8e29d93-7cc7-48b1-8ad6-e6cc37fc6cf8"
+      }
+    }
+  }
+}

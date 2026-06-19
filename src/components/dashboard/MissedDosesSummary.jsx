@@ -10,9 +10,12 @@ import { View, Text, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../../theme/colors';
+import { colors, getTheme } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 
 export default function MissedDosesSummary({ doseLogs }) {
+  const { isDark } = useTheme();
+  const t = getTheme(isDark);
   const monthStart = startOfMonth(new Date());
   const monthEnd   = endOfMonth(new Date());
 
@@ -25,14 +28,17 @@ export default function MissedDosesSummary({ doseLogs }) {
 
   if (missedThisMonth.length === 0) {
     return (
-      <LinearGradient colors={[colors.green50, colors.emerald50]} style={styles.card}>
+      <LinearGradient
+        colors={isDark ? [t.cardGradientGreen[0], t.cardGradientGreen[1]] : [colors.green50, colors.emerald50]}
+        style={[styles.card, { borderColor: isDark ? t.cardBorderGreen : colors.green200 }]}
+      >
         <View style={styles.header}>
           <Ionicons name="calendar-outline" size={18} color={colors.green700} />
-          <Text style={[styles.headerText, { color: colors.green900 }]}>Medication Adherence</Text>
+          <Text style={[styles.headerText, { color: isDark ? colors.green300 : colors.green900 }]}>Medication Adherence</Text>
         </View>
         <View style={styles.emptyCenter}>
-          <Text style={[styles.emptyTitle, { color: colors.green900 }]}>Perfect adherence! 🎉</Text>
-          <Text style={[styles.emptySubtitle, { color: colors.green700 }]}>No missed doses this month</Text>
+          <Text style={[styles.emptyTitle, { color: isDark ? colors.green300 : colors.green900 }]}>Perfect adherence! 🎉</Text>
+          <Text style={[styles.emptySubtitle, { color: isDark ? colors.green400 : colors.green700 }]}>No missed doses this month</Text>
         </View>
       </LinearGradient>
     );
@@ -45,25 +51,28 @@ export default function MissedDosesSummary({ doseLogs }) {
   });
 
   return (
-    <LinearGradient colors={[colors.amber50, colors.orange50]} style={styles.card}>
+    <LinearGradient
+      colors={isDark ? [t.cardGradientAmber[0], t.cardGradientAmber[1]] : [colors.amber50, colors.orange50]}
+      style={[styles.card, { borderColor: isDark ? t.cardBorderAmber : colors.amber200 }]}
+    >
       <View style={styles.header}>
         <Ionicons name="warning-outline" size={18} color={colors.amber700} />
-        <Text style={[styles.headerText, { color: colors.amber900 }]}>Missed Doses This Month</Text>
+        <Text style={[styles.headerText, { color: isDark ? colors.amber300 : colors.amber900 }]}>Missed Doses This Month</Text>
       </View>
 
       <View style={{ marginBottom: 12 }}>
-        <Text style={[styles.bigNum, { color: colors.amber900 }]}>{missedThisMonth.length}</Text>
-        <Text style={{ fontSize: 13, color: colors.amber700 }}>
+        <Text style={[styles.bigNum, { color: isDark ? colors.amber300 : colors.amber900 }]}>{missedThisMonth.length}</Text>
+        <Text style={{ fontSize: 13, color: isDark ? colors.amber400 : colors.amber700 }}>
           doses missed in {format(new Date(), 'MMMM')}
         </Text>
       </View>
 
-      <Text style={styles.sectionLabel}>By Medication:</Text>
+      <Text style={[styles.sectionLabel, { color: isDark ? colors.amber300 : colors.amber800 }]}>By Medication:</Text>
       {Object.entries(missedByMed)
         .sort((a, b) => b[1] - a[1])
         .map(([medName, count]) => (
-          <View key={medName} style={styles.row}>
-            <Text style={styles.medName}>{medName}</Text>
+          <View key={medName} style={[styles.row, { backgroundColor: t.surface, borderColor: isDark ? colors.amber800 : colors.amber100 }]}>
+            <Text style={[styles.medName, { color: t.textMuted }]}>{medName}</Text>
             <Text style={styles.count}>{count}</Text>
           </View>
         ))}

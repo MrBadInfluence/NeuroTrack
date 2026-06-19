@@ -1,11 +1,9 @@
 import React from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { colors } from '../../theme/colors';
+import { colors, getTheme } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 import AppButton from './AppButton';
 
-/**
- * ConfirmDialog — matches Radix AlertDialog used for delete confirmations
- */
 export default function ConfirmDialog({
   visible,
   title,
@@ -16,13 +14,16 @@ export default function ConfirmDialog({
   onCancel,
   dangerous = true,
 }) {
+  const { isDark } = useTheme();
+  const t = getTheme(isDark);
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onCancel} />
       <View style={styles.center}>
-        <View style={styles.card}>
-          <Text style={styles.title}>{title}</Text>
-          {description ? <Text style={styles.desc}>{description}</Text> : null}
+        <View style={[styles.card, { backgroundColor: t.surface }]}>
+          <Text style={[styles.title, { color: t.text }]}>{title}</Text>
+          {description ? <Text style={[styles.desc, { color: t.textMuted }]}>{description}</Text> : null}
           <View style={styles.row}>
             <AppButton variant="outline" onPress={onCancel} style={styles.btn}>
               {cancelLabel}
@@ -53,7 +54,6 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   card: {
-    backgroundColor: colors.white,
     borderRadius: 20,
     padding: 24,
     width: '100%',
@@ -66,12 +66,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 17,
     fontWeight: '700',
-    color: colors.slate900,
     marginBottom: 8,
   },
   desc: {
     fontSize: 14,
-    color: colors.slate500,
     marginBottom: 20,
     lineHeight: 20,
   },

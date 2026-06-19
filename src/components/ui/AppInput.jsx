@@ -1,14 +1,7 @@
-/**
- * AppInput — labelled text input with focus highlight
- *
- * Props: label, value, onChangeText, placeholder, multiline,
- *        keyboardType, secureTextEntry, editable, required
- * Border turns indigo when the field is focused; dims when editable=false.
- */
-
 import React, { useState } from 'react';
 import { TextInput, View, Text, StyleSheet } from 'react-native';
-import { colors } from '../../theme/colors';
+import { colors, getTheme } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 
 export default function AppInput({
   label,
@@ -25,11 +18,13 @@ export default function AppInput({
   editable = true,
 }) {
   const [focused, setFocused] = useState(false);
+  const { isDark } = useTheme();
+  const t = getTheme(isDark);
 
   return (
     <View style={[styles.wrapper, style]}>
       {label && (
-        <Text style={styles.label}>
+        <Text style={[styles.label, { color: t.textMuted }]}>
           {label}{required && <Text style={styles.required}> *</Text>}
         </Text>
       )}
@@ -37,7 +32,7 @@ export default function AppInput({
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={colors.slate400}
+        placeholderTextColor={t.textFaint}
         multiline={multiline}
         numberOfLines={numberOfLines}
         keyboardType={keyboardType}
@@ -47,9 +42,12 @@ export default function AppInput({
         onBlur={() => setFocused(false)}
         style={[
           styles.input,
+          {
+            backgroundColor: editable ? t.surfaceAlt : t.border,
+            borderColor:     focused ? colors.indigo500 : t.inputBorder,
+            color:           editable ? t.text : t.textMuted,
+          },
           multiline && styles.multiline,
-          focused && styles.focused,
-          !editable && styles.disabled,
           inputStyle,
         ]}
       />
@@ -64,33 +62,22 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: '500',
-    color: colors.slate700,
     marginBottom: 6,
   },
   required: {
     color: colors.red600,
   },
   input: {
-    backgroundColor: colors.white,
     borderWidth: 1.5,
-    borderColor: colors.slate200,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 12,
     fontSize: 15,
-    color: colors.slate900,
     minHeight: 48,
   },
   multiline: {
     minHeight: 96,
     textAlignVertical: 'top',
     paddingTop: 12,
-  },
-  focused: {
-    borderColor: colors.indigo500,
-  },
-  disabled: {
-    backgroundColor: colors.slate50,
-    color: colors.slate400,
   },
 });

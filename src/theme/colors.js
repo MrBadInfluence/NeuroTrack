@@ -86,6 +86,69 @@ export const colors = {
   red700: '#b91c1c',
 };
 
+/**
+ * Returns semantic color tokens for the current theme.
+ * Use these for any value that must change between light and dark mode;
+ * keep static layout values (padding, radius, flex) in StyleSheet.create.
+ */
+export function getTheme(isDark) {
+  if (isDark) {
+    return {
+      // Surfaces
+      surface:       '#1e293b',   // card / sheet background
+      surfaceAlt:    '#0f172a',   // input / depressed background
+      surfaceRaised: '#334155',   // drag handle, elevated element
+      // Borders
+      border:        '#334155',   // card outer border
+      borderLight:   '#1e293b',   // subtle inner border
+      // Text
+      text:          '#f1f5f9',   // primary
+      textMuted:     '#94a3b8',   // secondary
+      textFaint:     '#64748b',   // tertiary / placeholder
+      // Inputs
+      inputBorder:   '#475569',
+      // Nav chrome
+      handleBg:      'rgba(255,255,255,0.08)',
+      // Page-level LinearGradient backgrounds
+      bgGradient:          ['#0f172a', '#1a1040', '#12082a'],
+      bgGradientEmerald:   ['#0f172a', '#052013', '#041a14'],
+      bgGradientAmber:     ['#0f172a', '#1c1205', '#180d00'],
+      // Dashboard card-level gradient backgrounds (replaces pale light tints)
+      cardGradientIndigo:  ['#1e1b4b', '#2d1b69'],
+      cardGradientGreen:   ['#052a14', '#0b2a1a'],
+      cardGradientAmber:   ['#291a04', '#1c1005'],
+      cardGradientTeal:    ['#042a2a', '#041a1a'],
+      cardBorderIndigo:    '#3730a3',
+      cardBorderGreen:     '#166534',
+      cardBorderAmber:     '#78350f',
+      cardBorderTeal:      '#0f766e',
+    };
+  }
+  return {
+    surface:       '#ffffff',
+    surfaceAlt:    '#ffffff',
+    surfaceRaised: '#f8fafc',
+    border:        '#f1f5f9',
+    borderLight:   '#f1f5f9',
+    text:          '#0f172a',
+    textMuted:     '#64748b',
+    textFaint:     '#94a3b8',
+    inputBorder:   '#e2e8f0',
+    handleBg:      'rgba(255,255,255,0.7)',
+    bgGradient:          ['#f8fafc', '#eef2ff', '#faf5ff'],
+    bgGradientEmerald:   ['#f8fafc', '#ecfdf5', '#f0fdfa'],
+    bgGradientAmber:     ['#f8fafc', '#fffbeb', '#fff7ed'],
+    cardGradientIndigo:  ['#eef2ff', '#faf5ff'],
+    cardGradientGreen:   ['#f0fdf4', '#ecfdf5'],
+    cardGradientAmber:   ['#fffbeb', '#fff7ed'],
+    cardGradientTeal:    ['#ecfeff', '#f0fdfa'],
+    cardBorderIndigo:    '#c7d2fe',
+    cardBorderGreen:     '#bbf7d0',
+    cardBorderAmber:     '#fde68a',
+    cardBorderTeal:      '#a5f3fc',
+  };
+}
+
 // Gradient pairs used throughout the app (for expo-linear-gradient)
 export const gradients = {
   indigo:  ['#6366f1', '#a855f7'],   // Dashboard header / seizure

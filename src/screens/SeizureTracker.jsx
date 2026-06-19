@@ -17,6 +17,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { localClient } from '../api/localClient';
 import { format, parseISO } from 'date-fns';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,7 +27,9 @@ import ConfirmDialog from '../components/ui/ConfirmDialog';
 import SeizureForm from '../components/seizures/SeizureForm';
 import SeizureTypeInfo, { seizureTypes, getSeizureTypeInfo } from '../components/seizures/SeizureTypeInfo';
 import AppButton from '../components/ui/AppButton';
-import { colors, gradients } from '../theme/colors';
+import * as Haptics from 'expo-haptics';
+import { colors, gradients, getTheme } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 
 // Background / text / border colors for each severity level used in the list cards
 const severityColors = {
@@ -42,6 +45,10 @@ export default function SeizureTracker() {
   const [showGuide,      setShowGuide]      = useState(false);          // toggle for the seizure-types guide
 
   const queryClient = useQueryClient();
+  const { isDark } = useTheme();
+  const t = getTheme(isDark);
+  const insets = useSafeAreaInsets();
+  const hPad = Math.max(16, Math.max(insets.left, insets.right) + 8);
 
   const { data: seizures = [], isLoading, refetch, isFetching } = useQuery({
     queryKey: ['seizures'],
@@ -50,13 +57,18 @@ export default function SeizureTracker() {
 
   const createMutation = useMutation({
     mutationFn: (data) => localClient.entities.Seizure.create(data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['seizures'] }); setShowForm(false); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['seizures'] });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setShowForm(false);
+    },
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => localClient.entities.Seizure.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['seizures'] });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setShowForm(false);
       setEditingSeizure(null);
     },
@@ -81,14 +93,14 @@ export default function SeizureTracker() {
 
   return (
     <LinearGradient
-      colors={gradients.bgSlate}
+      colors={t.bgGradient}
       style={{ flex: 1 }}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       locations={[0, 0.5, 1]}
     >
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingLeft: hPad, paddingRight: hPad }]}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={isFetching} onRefresh={refetch} />}
       >
@@ -99,13 +111,18 @@ export default function SeizureTracker() {
               <Ionicons name="pulse" size={24} color={colors.white} />
             </LinearGradient>
             <View>
-              <Text style={styles.pageTitle}>Seizure Tracker</Text>
-              <Text style={styles.pageSubtitle}>Log and monitor seizures</Text>
+              <Text style={[styles.pageTitle, { color: t.text }]}>Seizure Tracker</Text>
+              <Text style={[styles.pageSubtitle, { color: t.textMuted }]}>Log and monitor seizures</Text>
             </View>
           </View>
           <View style={styles.headerBtns}>
             <TouchableOpacity
-              style={[styles.iconBtn, { backgroundColor: showGuide ? colors.indigo100 : colors.white }]}
+              style={[styles.iconBtn, {
+                backgroundColor: showGuide
+                  ? (isDark ? colors.indigo900 : colors.indigo100)
+                  : t.surface,
+                borderColor: t.border,
+              }]}
               onPress={() => setShowGuide(!showGuide)}
             >
               <Ionicons name="information-circle-outline" size={20} color={colors.indigo600} />
@@ -121,8 +138,8 @@ export default function SeizureTracker() {
 
         {/* Seizure Types Guide (collapsible) */}
         {showGuide && (
-          <View style={[styles.card, { marginBottom: 16 }]}>
-            <Text style={styles.guideTitle}>
+          <View style={[styles.card, { marginBottom: 16, backgroundColor: t.surface, borderColor: t.border }]}>
+            <Text style={[styles.guideTitle, { color: t.text }]}>
               <Ionicons name="flash" size={16} color={colors.indigo600} /> Understanding Seizure Types
             </Text>
             {Object.entries(seizureTypes).map(([key, info]) => (
@@ -134,16 +151,16 @@ export default function SeizureTracker() {
         {/* Loading skeletons */}
         {isLoading ? (
           [1, 2, 3].map(i => (
-            <View key={i} style={[styles.card, styles.skeleton, { marginBottom: 12 }]}>
-              <View style={styles.skelLine1} />
-              <View style={styles.skelLine2} />
+            <View key={i} style={[styles.card, styles.skeleton, { marginBottom: 12, backgroundColor: t.surface, borderColor: t.border }]}>
+              <View style={[styles.skelLine1, { backgroundColor: t.border }]} />
+              <View style={[styles.skelLine2, { backgroundColor: t.border }]} />
             </View>
           ))
         ) : seizures.length === 0 ? (
-          <View style={styles.emptyCard}>
+          <View style={[styles.emptyCard, { backgroundColor: t.surface, borderColor: t.border }]}>
             <Ionicons name="pulse-outline" size={56} color={colors.indigo200} />
-            <Text style={styles.emptyTitle}>No seizures logged yet</Text>
-            <Text style={styles.emptySub}>Start tracking by logging your first entry</Text>
+            <Text style={[styles.emptyTitle, { color: t.text }]}>No seizures logged yet</Text>
+            <Text style={[styles.emptySub, { color: t.textMuted }]}>Start tracking by logging your first entry</Text>
             <AppButton
               gradient={gradients.indigo}
               onPress={() => setShowForm(true)}
@@ -157,30 +174,33 @@ export default function SeizureTracker() {
             const typeInfo = getSeizureTypeInfo(seizure.seizure_type);
             const sev = severityColors[seizure.severity] || {};
             return (
-              <View key={seizure.id} style={[styles.card, { marginBottom: 12 }]}>
+              <View key={seizure.id} style={[styles.card, { marginBottom: 12, backgroundColor: t.surface, borderColor: t.border }]}>
                 <View style={styles.seizureRow}>
                   {/* Date block */}
-                  <View style={styles.dateBlock}>
+                  <View style={[styles.dateBlock, {
+                    backgroundColor: isDark ? colors.indigo900 : colors.indigo50,
+                    borderColor: isDark ? colors.indigo700 : colors.indigo100,
+                  }]}>
                     <Text style={styles.dateDay}>
                       {seizure.date_time ? format(parseISO(seizure.date_time), 'd') : '—'}
                     </Text>
-                    <Text style={styles.dateMon}>
+                    <Text style={[styles.dateMon, { color: t.textMuted }]}>
                       {seizure.date_time ? format(parseISO(seizure.date_time), 'MMM') : ''}
                     </Text>
                   </View>
 
                   <View style={styles.seizureBody}>
                     {/* Type + info */}
-                    <Text style={styles.seizureTypeName}>{typeInfo.name}</Text>
+                    <Text style={[styles.seizureTypeName, { color: t.text }]}>{typeInfo.name}</Text>
 
                     {/* Meta row */}
                     <View style={styles.metaRow}>
-                      <Text style={styles.metaText}>
+                      <Text style={[styles.metaText, { color: t.textMuted }]}>
                         <Ionicons name="time-outline" size={12} />
                         {' '}{seizure.date_time ? format(parseISO(seizure.date_time), 'h:mm a') : '—'}
                       </Text>
                       {seizure.duration_seconds && (
-                        <Text style={styles.metaText}>
+                        <Text style={[styles.metaText, { color: t.textMuted }]}>
                           · {seizure.duration_seconds < 60
                             ? `${seizure.duration_seconds}s`
                             : `${Math.floor(seizure.duration_seconds / 60)}m ${seizure.duration_seconds % 60}s`}
@@ -194,18 +214,21 @@ export default function SeizureTracker() {
                     </View>
 
                     {seizure.triggers && (
-                      <Text style={styles.detailText}><Text style={styles.detailLabel}>Triggers: </Text>{seizure.triggers}</Text>
+                      <Text style={[styles.detailText, { color: t.textMuted }]}><Text style={styles.detailLabel}>Triggers: </Text>{seizure.triggers}</Text>
                     )}
                     {seizure.post_ictal_symptoms && (
-                      <Text style={styles.detailText}><Text style={styles.detailLabel}>Post-seizure: </Text>{seizure.post_ictal_symptoms}</Text>
+                      <Text style={[styles.detailText, { color: t.textMuted }]}><Text style={styles.detailLabel}>Post-seizure: </Text>{seizure.post_ictal_symptoms}</Text>
                     )}
                     {seizure.notes && (
-                      <Text style={styles.noteText}>"{seizure.notes}"</Text>
+                      <Text style={[styles.noteText, { color: t.textFaint }]}>"{seizure.notes}"</Text>
                     )}
                     {seizure.nocturnal && (
-                      <View style={styles.nocturnalBadge}>
+                      <View style={[styles.nocturnalBadge, {
+                        backgroundColor: isDark ? colors.indigo900 : colors.indigo50,
+                        borderColor: isDark ? colors.indigo700 : colors.indigo100,
+                      }]}>
                         <Ionicons name="moon-outline" size={13} color={colors.indigo600} />
-                        <Text style={styles.nocturnalText}>Nocturnal (during sleep)</Text>
+                        <Text style={[styles.nocturnalText, { color: isDark ? colors.indigo200 : colors.indigo900 }]}>Nocturnal (during sleep)</Text>
                       </View>
                     )}
                   </View>

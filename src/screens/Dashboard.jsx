@@ -14,6 +14,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   RefreshControl,
+  useWindowDimensions,
 } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
@@ -21,14 +22,17 @@ import { localClient } from '../api/localClient';
 import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors, gradients } from '../theme/colors';
+import { colors, gradients, getTheme } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 import StatCard from '../components/shared/StatCard';
 import MonthSummary from '../components/dashboard/MonthSummary';
 import MissedDosesSummary from '../components/dashboard/MissedDosesSummary';
 import TodaysDoses from '../components/dashboard/TodaysDoses';
 import { getSeizureTypeInfo } from '../components/seizures/SeizureTypeInfo';
 import { storageGet, storageSet } from '../utils/storage';
+import * as Haptics from 'expo-haptics';
 import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // AsyncStorage key used to persist the user's custom section order
 const SECTION_ORDER_KEY = 'neurotrack_dashboard_order';
@@ -45,6 +49,13 @@ const DEFAULT_SECTIONS = [
 export default function Dashboard() {
   const navigation = useNavigation();
   const [sections, setSections] = useState(DEFAULT_SECTIONS);
+  const { isDark } = useTheme();
+  const t = getTheme(isDark);
+
+  const { width: ww, height: wh } = useWindowDimensions();
+  const isLandscape = ww > wh;
+  const insets = useSafeAreaInsets();
+  const hPad = Math.max(16, Math.max(insets.left, insets.right) + 8);
 
   // Restore the saved section order from AsyncStorage on first render.
   // Any sections that were added after the order was saved are appended at the end.
@@ -96,9 +107,9 @@ export default function Dashboard() {
   const onRefresh = () => { refetchSeizures(); refetchDoseLogs(); };
 
   const severityColors = {
-    mild:     { bg: colors.green100,  text: colors.green700 },
-    moderate: { bg: colors.amber100,  text: colors.amber700 },
-    severe:   { bg: colors.red100,    text: colors.red700 },
+    mild:     { bg: isDark ? colors.green900  : colors.green100,  text: isDark ? colors.green200  : colors.green700 },
+    moderate: { bg: isDark ? colors.amber900  : colors.amber100,  text: isDark ? colors.amber200  : colors.amber700 },
+    severe:   { bg: isDark ? '#2a0a0a'        : colors.red100,    text: isDark ? colors.red200    : colors.red700 },
   };
 
   // Persist the new section order after the user drops a dragged item
@@ -122,13 +133,13 @@ export default function Dashboard() {
 
       case 'recentSeizures':
         return (
-          <View style={[styles.card, { paddingBottom: 10 }]}>
-            <View style={styles.cardHeader}>
+          <View style={[styles.card, { paddingBottom: 10, backgroundColor: t.surface, borderColor: t.border }]}>
+            <View style={[styles.cardHeader, { borderBottomColor: t.border }]}>
               <View style={styles.cardTitleRow}>
                 <LinearGradient colors={gradients.indigo} style={styles.cardIcon} start={{x:0,y:0}} end={{x:1,y:1}}>
                   <Ionicons name="pulse" size={18} color={colors.white} />
                 </LinearGradient>
-                <Text style={styles.cardTitle}>Recent Seizures</Text>
+                <Text style={[styles.cardTitle, { color: t.text }]}>Recent Seizures</Text>
               </View>
               <TouchableOpacity onPress={() => navigation.navigate('SeizureTracker')}>
                 <Text style={styles.viewAll}>View All →</Text>
@@ -138,12 +149,12 @@ export default function Dashboard() {
             {recentSeizures.length === 0 ? (
               <View style={styles.empty}>
                 <Ionicons name="pulse-outline" size={44} color={colors.indigo200} />
-                <Text style={styles.emptyTitle}>No seizures logged yet</Text>
+                <Text style={[styles.emptyTitle, { color: t.textMuted }]}>No seizures logged yet</Text>
                 <TouchableOpacity
-                  style={styles.emptyBtn}
+                  style={[styles.emptyBtn, { borderColor: t.border }]}
                   onPress={() => navigation.navigate('SeizureTracker')}
                 >
-                  <Text style={styles.emptyBtnText}>+ Log First Entry</Text>
+                  <Text style={[styles.emptyBtnText, { color: t.textMuted }]}>+ Log First Entry</Text>
                 </TouchableOpacity>
               </View>
             ) : (
@@ -151,24 +162,30 @@ export default function Dashboard() {
                 const typeInfo = getSeizureTypeInfo(seizure.seizure_type);
                 const sev      = severityColors[seizure.severity] || {};
                 return (
-                  <View key={seizure.id} style={styles.seizureRow}>
+                  <View key={seizure.id} style={[
+                    styles.seizureRow,
+                    {
+                      backgroundColor: isDark ? colors.indigo900 : colors.indigo50,
+                      borderColor:     isDark ? colors.indigo700 : colors.indigo100,
+                    },
+                  ]}>
                     <View style={styles.seizureDate}>
                       <Text style={styles.seizureDateDay}>
                         {seizure.date_time ? format(parseISO(seizure.date_time), 'd') : '—'}
                       </Text>
-                      <Text style={styles.seizureDateMon}>
+                      <Text style={[styles.seizureDateMon, { color: t.textMuted }]}>
                         {seizure.date_time ? format(parseISO(seizure.date_time), 'MMM') : ''}
                       </Text>
                     </View>
                     <View style={styles.seizureInfo}>
-                      <Text style={styles.seizureType}>{typeInfo.name}</Text>
+                      <Text style={[styles.seizureType, { color: t.text }]}>{typeInfo.name}</Text>
                       {seizure.severity && (
                         <View style={[styles.sevBadge, { backgroundColor: sev.bg }]}>
                           <Text style={[styles.sevText, { color: sev.text }]}>{seizure.severity}</Text>
                         </View>
                       )}
                     </View>
-                    <Text style={styles.seizureTime}>
+                    <Text style={[styles.seizureTime, { color: t.textFaint }]}>
                       {seizure.date_time ? format(parseISO(seizure.date_time), 'h:mm a') : ''}
                     </Text>
                   </View>
@@ -221,9 +238,9 @@ export default function Dashboard() {
 
         {/* Drag handle — top-right corner, long press to reorder */}
         <TouchableOpacity
-          onLongPress={drag}
+          onLongPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); drag(); }}
           delayLongPress={350}
-          style={styles.dragHandle}
+          style={[styles.dragHandle, { backgroundColor: t.handleBg }]}
           activeOpacity={0.5}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
@@ -237,29 +254,45 @@ export default function Dashboard() {
   const ListHeader = (
     <View>
       <View style={styles.header}>
-        <Text style={styles.title}>Seizure and Medication{'\n'}Dashboard</Text>
-        <Text style={styles.date}>{format(new Date(), 'EEEE, MMMM d, yyyy')}</Text>
-        </View>
+        <Text style={[styles.title, { color: t.text }]}>
+          {isLandscape ? 'Dashboard' : `Seizure and Medication\nDashboard`}
+        </Text>
+        <Text style={[styles.date, { color: t.textMuted }]}>{format(new Date(), 'EEEE, MMMM d, yyyy')}</Text>
+      </View>
 
       {/* Stats grid — fixed, always at top */}
       <View style={styles.statsGrid}>
-        <View style={styles.statsRow}>
-          <StatCard icon={p => <Ionicons name="pulse" {...p} />}         label="Seizures This Month"  value={seizuresThisMonth.length}  gradient={gradients.indigo} />
-          <View style={{ width: 10 }} />
-          <StatCard icon={p => <Ionicons name="medical" {...p} />}       label="Active Medications"   value={activeMedications.length}  gradient={gradients.emerald} />
-        </View>
-        <View style={[styles.statsRow, { marginTop: 10 }]}>
-          <StatCard icon={p => <Ionicons name="notifications" {...p} />} label="Active Reminders"     value={activeReminders.length}    gradient={gradients.amber} />
-          <View style={{ width: 10 }} />
-          <StatCard icon={p => <Ionicons name="calendar" {...p} />}      label="Total Seizures"       value={seizures.length}           gradient={gradients.rose} />
-        </View>
+        {isLandscape ? (
+          <View style={styles.statsRow}>
+            <StatCard icon={p => <Ionicons name="pulse" {...p} />}         label="Seizures This Month"  value={seizuresThisMonth.length}  gradient={gradients.indigo} />
+            <View style={{ width: 10 }} />
+            <StatCard icon={p => <Ionicons name="medical" {...p} />}       label="Active Medications"   value={activeMedications.length}  gradient={gradients.emerald} />
+            <View style={{ width: 10 }} />
+            <StatCard icon={p => <Ionicons name="notifications" {...p} />} label="Active Reminders"     value={activeReminders.length}    gradient={gradients.amber} />
+            <View style={{ width: 10 }} />
+            <StatCard icon={p => <Ionicons name="calendar" {...p} />}      label="Total Seizures"       value={seizures.length}           gradient={gradients.rose} />
+          </View>
+        ) : (
+          <>
+            <View style={styles.statsRow}>
+              <StatCard icon={p => <Ionicons name="pulse" {...p} />}         label="Seizures This Month"  value={seizuresThisMonth.length}  gradient={gradients.indigo} />
+              <View style={{ width: 10 }} />
+              <StatCard icon={p => <Ionicons name="medical" {...p} />}       label="Active Medications"   value={activeMedications.length}  gradient={gradients.emerald} />
+            </View>
+            <View style={[styles.statsRow, { marginTop: 10 }]}>
+              <StatCard icon={p => <Ionicons name="notifications" {...p} />} label="Active Reminders"     value={activeReminders.length}    gradient={gradients.amber} />
+              <View style={{ width: 10 }} />
+              <StatCard icon={p => <Ionicons name="calendar" {...p} />}      label="Total Seizures"       value={seizures.length}           gradient={gradients.rose} />
+            </View>
+          </>
+        )}
       </View>
     </View>
   );
 
   return (
     <LinearGradient
-      colors={gradients.bgSlate}
+      colors={t.bgGradient}
       style={{ flex: 1 }}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
@@ -271,7 +304,7 @@ export default function Dashboard() {
         onDragEnd={handleDragEnd}
         renderItem={renderItem}
         refreshControl={<RefreshControl refreshing={isFetching} onRefresh={onRefresh} />}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingLeft: hPad, paddingRight: hPad }]}
         ListHeaderComponent={ListHeader}
         ListFooterComponent={<View style={{ height: 20 }} />}
         showsVerticalScrollIndicator={false}
@@ -282,7 +315,10 @@ export default function Dashboard() {
 
 const styles = StyleSheet.create({
   content: {
-    padding: 16,
+    paddingTop: 16,
+    paddingBottom: 16,
+    // paddingLeft/Right come from the safe-area-aware hPad value
+    // passed via contentContainerStyle, so they are not set here.
   },
   header: {
     marginBottom: 20,

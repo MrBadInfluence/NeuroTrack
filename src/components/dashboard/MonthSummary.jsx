@@ -11,10 +11,13 @@ import { View, Text, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../../theme/colors';
+import { colors, getTheme } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 import { getSeizureTypeInfo } from '../seizures/SeizureTypeInfo';
 
 export default function MonthSummary({ seizures }) {
+  const { isDark } = useTheme();
+  const t = getTheme(isDark);
   const monthStart = startOfMonth(new Date());
   const monthEnd   = endOfMonth(new Date());
 
@@ -26,19 +29,22 @@ export default function MonthSummary({ seizures }) {
 
   if (seizuresThisMonth.length === 0) {
     return (
-      <LinearGradient colors={[colors.green50, colors.emerald50]} style={styles.card}>
+      <LinearGradient
+        colors={isDark ? [t.cardGradientGreen[0], t.cardGradientGreen[1]] : [colors.green50, colors.emerald50]}
+        style={[styles.card, { borderColor: isDark ? t.cardBorderGreen : colors.green200 }]}
+      >
         <View style={styles.header}>
           <Ionicons name="trending-down" size={18} color={colors.green700} />
-          <Text style={[styles.headerText, { color: colors.green900 }]}>
+          <Text style={[styles.headerText, { color: isDark ? colors.green300 : colors.green900 }]}>
             {format(new Date(), 'MMMM yyyy')} Summary
           </Text>
         </View>
         <View style={styles.emptyCenter}>
-          <View style={[styles.iconCircle, { backgroundColor: colors.green100 }]}>
+          <View style={[styles.iconCircle, { backgroundColor: isDark ? colors.green900 : colors.green100 }]}>
             <Ionicons name="pulse" size={28} color={colors.green600} />
           </View>
-          <Text style={[styles.emptyTitle, { color: colors.green900 }]}>No seizures this month!</Text>
-          <Text style={[styles.emptySubtitle, { color: colors.green700 }]}>Keep up the great progress</Text>
+          <Text style={[styles.emptyTitle, { color: isDark ? colors.green300 : colors.green900 }]}>No seizures this month!</Text>
+          <Text style={[styles.emptySubtitle, { color: isDark ? colors.green400 : colors.green700 }]}>Keep up the great progress</Text>
         </View>
       </LinearGradient>
     );
@@ -56,27 +62,30 @@ export default function MonthSummary({ seizures }) {
   const hasSeverity = Object.values(severityBreakdown).some(v => v > 0);
 
   return (
-    <LinearGradient colors={[colors.indigo50, colors.purple50]} style={styles.card}>
+    <LinearGradient
+      colors={isDark ? [t.cardGradientIndigo[0], t.cardGradientIndigo[1]] : [colors.indigo50, colors.purple50]}
+      style={[styles.card, { borderColor: isDark ? t.cardBorderIndigo : colors.indigo200 }]}
+    >
       <View style={styles.header}>
         <Ionicons name="pulse" size={18} color={colors.indigo700} />
-        <Text style={[styles.headerText, { color: colors.indigo900 }]}>
+        <Text style={[styles.headerText, { color: isDark ? colors.indigo300 : colors.indigo900 }]}>
           {format(new Date(), 'MMMM yyyy')} Summary
         </Text>
       </View>
 
-      <View style={styles.totalBox}>
-        <Text style={styles.totalLabel}>Total Seizures</Text>
+      <View style={[styles.totalBox, { backgroundColor: t.surface, borderColor: isDark ? colors.indigo800 : colors.indigo100 }]}>
+        <Text style={[styles.totalLabel, { color: t.textMuted }]}>Total Seizures</Text>
         <Text style={styles.totalNum}>{seizuresThisMonth.length}</Text>
       </View>
 
-      <Text style={styles.sectionLabel}>By Type:</Text>
+      <Text style={[styles.sectionLabel, { color: isDark ? colors.indigo300 : colors.indigo900 }]}>By Type:</Text>
       {Object.entries(typeBreakdown)
         .sort((a, b) => b[1] - a[1])
         .map(([type, count]) => {
           const info = getSeizureTypeInfo(type);
           return (
-            <View key={type} style={styles.typeRow}>
-              <Text style={styles.typeName}>{info.name}</Text>
+            <View key={type} style={[styles.typeRow, { backgroundColor: t.surface, borderColor: t.border }]}>
+              <Text style={[styles.typeName, { color: t.textMuted }]}>{info.name}</Text>
               <Text style={styles.typeCount}>{count}</Text>
             </View>
           );
@@ -84,7 +93,7 @@ export default function MonthSummary({ seizures }) {
 
       {hasSeverity && (
         <>
-          <Text style={[styles.sectionLabel, { marginTop: 10 }]}>By Severity:</Text>
+          <Text style={[styles.sectionLabel, { marginTop: 10, color: isDark ? colors.indigo300 : colors.indigo900 }]}>By Severity:</Text>
           <View style={styles.severityRow}>
             {severityBreakdown.mild > 0 && (
               <View style={[styles.sevBadge, { backgroundColor: colors.green100, borderColor: colors.green200 }]}>
