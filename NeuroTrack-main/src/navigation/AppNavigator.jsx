@@ -28,7 +28,7 @@ import {
   StyleSheet,
   View,
   PanResponder,
-  Dimensions,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -41,7 +41,8 @@ import SeizureTracker from '../screens/SeizureTracker';
 import Medications    from '../screens/Medications';
 import Reminders      from '../screens/Reminders';
 import Profile        from '../screens/Profile';
-import { colors }    from '../theme/colors';
+import { colors, getTheme } from '../theme/colors';
+import { useTheme }  from '../context/ThemeContext';
 import { storageGet } from '../utils/storage';
 
 const Tab   = createBottomTabNavigator();
@@ -52,27 +53,16 @@ const AVATAR_KEY = 'neurotrack_avatar';
 // Tab order — used for swipe navigation
 const TABS = ['Dashboard', 'SeizureTracker', 'Medications', 'Reminders'];
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-
-// ─── Shared header styles ────────────────────────────────────────────────────
-const sharedHeaderStyle = {
-  backgroundColor: colors.white,
-  shadowOpacity:   0,
-  elevation:       0,
-  borderBottomWidth: 1,
-  borderBottomColor: colors.slate200,
-};
-
-const sharedHeaderTitleStyle = {
-  fontSize:   17,
-  fontWeight: '800',
-  color:      colors.slate900,
-};
-
 // ─── MainTabs ────────────────────────────────────────────────────────────────
 function MainTabs({ navigation }) {
   const [avatar, setAvatar] = useState(null);
+  const { isDark } = useTheme();
+  const t = getTheme(isDark);
   const insets = useSafeAreaInsets();
+  const { width: ww, height: wh } = useWindowDimensions();
+  const isLandscape = ww > wh;
+  const screenHeightRef = useRef(wh);
+  screenHeightRef.current = wh;
 
   // Reload avatar whenever we return from Profile
   useFocusEffect(
@@ -93,7 +83,7 @@ function MainTabs({ navigation }) {
         const absX = Math.abs(dx);
         const absY = Math.abs(dy);
         // Upward swipe starting inside the tab-bar strip → Profile
-        const fromTabBar = y0 > SCREEN_HEIGHT - 90;
+        const fromTabBar = y0 > screenHeightRef.current - 90;
         if (fromTabBar && dy < -20 && absY > absX) return true;
         // Horizontal swipe clearly more sideways than vertical → tab switch
         if (absX > absY * 1.5 && absX > 20) return true;
@@ -105,7 +95,7 @@ function MainTabs({ navigation }) {
         const absY = Math.abs(dy);
 
         // ── Swipe UP from tab bar → Profile ──────────────────────────────
-        const fromTabBar = y0 > SCREEN_HEIGHT - 90;
+        const fromTabBar = y0 > screenHeightRef.current - 90;
         if (fromTabBar && dy < -60 && absY > absX) {
           navigation.navigate('Profile');
           return;
@@ -136,8 +126,18 @@ function MainTabs({ navigation }) {
         screenOptions={({ navigation }) => ({
           // ── Shared header ──
           headerShown: true,
-          headerStyle: sharedHeaderStyle,
-          headerTitleStyle: sharedHeaderTitleStyle,
+          headerStyle: {
+            backgroundColor: t.surface,
+            shadowOpacity:   0,
+            elevation:       0,
+            borderBottomWidth: 1,
+            borderBottomColor: t.border,
+          },
+          headerTitleStyle: {
+            fontSize:   17,
+            fontWeight: '800',
+            color:      t.text,
+          },
           headerTitle: 'NeuroTrack',
 
           // ── Profile avatar button (top-right) ──
@@ -157,15 +157,16 @@ function MainTabs({ navigation }) {
 
           // ── Bottom tab bar ──
           tabBarStyle: {
-            backgroundColor: colors.white,
-            borderTopColor:  colors.slate200,
+            backgroundColor: t.surface,
+            borderTopColor:  t.border,
             borderTopWidth:  1,
-            paddingTop:      6,
+            paddingTop:      isLandscape ? 2 : 6,
             paddingBottom:   insets.bottom + 4,
-            height:          62 + insets.bottom,
+            height:          (isLandscape ? 44 : 62) + insets.bottom,
           },
+          tabBarShowLabel:         !isLandscape,
           tabBarActiveTintColor:   colors.indigo600,
-          tabBarInactiveTintColor: colors.slate400,
+          tabBarInactiveTintColor: isDark ? colors.slate500 : colors.slate400,
           tabBarLabelStyle: {
             fontSize:   11,
             fontWeight: '600',
@@ -222,6 +223,9 @@ function MainTabs({ navigation }) {
 
 // ─── Root Stack ───────────────────────────────────────────────────────────────
 export default function AppNavigator() {
+  const { isDark } = useTheme();
+  const t = getTheme(isDark);
+
   return (
     <Stack.Navigator>
       {/* Main four-tab shell — header is handled by the Tab.Navigator */}
@@ -237,7 +241,13 @@ export default function AppNavigator() {
         component={Profile}
         options={{
           title:           '',
-          headerStyle:     sharedHeaderStyle,
+          headerStyle: {
+            backgroundColor: t.surface,
+            shadowOpacity:   0,
+            elevation:       0,
+            borderBottomWidth: 1,
+            borderBottomColor: t.border,
+          },
           headerTintColor: colors.indigo600,
           headerBackTitle: 'Back',
         }}

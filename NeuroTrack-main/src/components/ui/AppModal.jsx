@@ -7,13 +7,17 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  useWindowDimensions,
 } from 'react-native';
-import { colors } from '../../theme/colors';
+import { colors, getTheme } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 
-/**
- * AppModal — slide-up sheet modal matching the web app's Dialog component
- */
 export default function AppModal({ visible, onClose, children, scrollable = true }) {
+  const { width: ww, height: wh } = useWindowDimensions();
+  const isLandscape = ww > wh;
+  const { isDark } = useTheme();
+  const t = getTheme(isDark);
+
   return (
     <Modal
       visible={visible}
@@ -21,7 +25,6 @@ export default function AppModal({ visible, onClose, children, scrollable = true
       transparent
       onRequestClose={onClose}
     >
-      {/* Dimmed backdrop — tap to close */}
       <TouchableOpacity
         style={styles.backdrop}
         activeOpacity={1}
@@ -30,12 +33,11 @@ export default function AppModal({ visible, onClose, children, scrollable = true
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.container}
+        style={[styles.container, isLandscape && styles.containerLandscape]}
         pointerEvents="box-none"
       >
-        <View style={styles.sheet}>
-          {/* Drag handle pill */}
-          <View style={styles.handle} />
+        <View style={[styles.sheet, isLandscape && styles.sheetLandscape, { backgroundColor: t.surface }]}>
+          <View style={[styles.handle, { backgroundColor: t.border }]} />
 
           {scrollable ? (
             <ScrollView
@@ -64,7 +66,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   sheet: {
-    backgroundColor: colors.white,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: '92%',
@@ -73,7 +74,6 @@ const styles = StyleSheet.create({
   handle: {
     width: 40,
     height: 4,
-    backgroundColor: colors.slate200,
     borderRadius: 2,
     alignSelf: 'center',
     marginTop: 12,
@@ -81,5 +81,13 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
+  },
+  containerLandscape: {
+    justifyContent: 'center',
+    paddingHorizontal: '8%',
+  },
+  sheetLandscape: {
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
 });

@@ -16,7 +16,6 @@ import {
   TouchableOpacity,
   Dimensions,
   PanResponder,
-  Animated,
   StatusBar,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -105,13 +104,16 @@ export default function Onboarding({ onComplete }) {
   // Horizontal swipe handler — a delta of 50px or more triggers a slide change
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
+      // Only claim the responder once the finger has moved clearly sideways —
+      // this prevents stealing tap events from the CTA button and dot indicators.
+      onMoveShouldSetPanResponder: (_, { dx, dy }) =>
+        Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.5,
       onPanResponderGrant: (evt) => {
         touchStartX.current = evt.nativeEvent.pageX;
       },
       onPanResponderRelease: (evt) => {
         const delta = touchStartX.current - evt.nativeEvent.pageX;
-        if (Math.abs(delta) < 50) return; // ignore taps / tiny swipes
+        if (Math.abs(delta) < 50) return; // ignore tiny swipes
         setCurrent(c => {
           if (delta > 0 && c < slides.length - 1) return c + 1; // swipe left → next
           if (delta < 0 && c > 0) return c - 1;                 // swipe right → previous

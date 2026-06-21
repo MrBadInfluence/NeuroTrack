@@ -12,7 +12,9 @@ import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, Switch, RefreshControl,
 } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { localClient } from '../api/localClient';
+import { scheduleReminderNotifications, cancelReminderNotifications } from '../lib/notifications';
 import { format } from 'date-fns';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -21,7 +23,9 @@ import ConfirmDialog from '../components/ui/ConfirmDialog';
 import ReminderForm from '../components/medications/ReminderForm';
 import PastDoseForm from '../components/medications/PastDoseForm';
 import AppButton from '../components/ui/AppButton';
-import { colors, gradients } from '../theme/colors';
+import { colors, gradients, getTheme } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
+import * as Haptics from 'expo-haptics';
 
 const DAYS_SHORT = {
   monday:'Mon', tuesday:'Tue', wednesday:'Wed', thursday:'Thu',
@@ -36,6 +40,10 @@ export default function Reminders() {
   const [showPastDoseForm, setShowPastDoseForm] = useState(false);   // controls the retroactive dose-log modal
 
   const queryClient = useQueryClient();
+  const { isDark } = useTheme();
+  const t = getTheme(isDark);
+  const insets = useSafeAreaInsets();
+  const hPad = Math.max(16, Math.max(insets.left, insets.right) + 8);
 
   const { data: reminders   = [], isLoading: loadingR, refetch: refetchR, isFetching } = useQuery({
     queryKey: ['reminders'],
@@ -48,18 +56,29 @@ export default function Reminders() {
 
   const createMutation = useMutation({
     mutationFn: (d) => localClient.entities.MedicationReminder.create(d),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['reminders'] }); setShowForm(false); },
+    onSuccess: (row) => {
+      scheduleReminderNotifications(row);
+      queryClient.invalidateQueries({ queryKey: ['reminders'] });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setShowForm(false);
+    },
   });
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => localClient.entities.MedicationReminder.update(id, data),
-    onSuccess: () => {
+    onSuccess: (row) => {
+      scheduleReminderNotifications(row);
       queryClient.invalidateQueries({ queryKey: ['reminders'] });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setShowForm(false); setEditingReminder(null);
     },
   });
   const deleteMutation = useMutation({
     mutationFn: (id) => localClient.entities.MedicationReminder.delete(id),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['reminders'] }); setDeleteId(null); },
+    onSuccess: (_, id) => {
+      cancelReminderNotifications(id);
+      queryClient.invalidateQueries({ queryKey: ['reminders'] });
+      setDeleteId(null);
+    },
   });
   const createDoseLogMutation = useMutation({
     mutationFn: (d) => localClient.entities.DoseLog.create(d),
@@ -68,6 +87,7 @@ export default function Reminders() {
 
   // Flip the is_active flag directly from the list without opening the form
   const toggleActive = (reminder) => {
+    Haptics.selectionAsync();
     updateMutation.mutate({ id: reminder.id, data: { ...reminder, is_active: !reminder.is_active } });
   };
   // Route the form submission to create or update based on whether we're editing
@@ -85,14 +105,14 @@ export default function Reminders() {
 
   return (
     <LinearGradient
-      colors={gradients.bgAmber}
+      colors={t.bgGradientAmber}
       style={{ flex: 1 }}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       locations={[0, 0.5, 1]}
     >
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingLeft: hPad, paddingRight: hPad }]}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={isFetching} onRefresh={refetchR} />}
       >
@@ -103,13 +123,13 @@ export default function Reminders() {
               <Ionicons name="notifications" size={24} color={colors.white} />
             </LinearGradient>
             <View>
-              <Text style={styles.pageTitle}>Reminders</Text>
-              <Text style={styles.pageSubtitle}>Never miss a dose</Text>
+              <Text style={[styles.pageTitle, { color: t.text }]}>Reminders</Text>
+              <Text style={[styles.pageSubtitle, { color: t.textMuted }]}>Never miss a dose</Text>
             </View>
           </View>
           <View style={styles.headerBtns}>
             <TouchableOpacity
-              style={[styles.iconBtn, { borderColor: colors.teal500 }]}
+              style={[styles.iconBtn, { backgroundColor: t.surface, borderColor: colors.teal500 }]}
               onPress={() => setShowPastDoseForm(true)}
               disabled={activeMeds.length === 0}
             >
@@ -127,36 +147,39 @@ export default function Reminders() {
 
         {/* Warning — no active meds */}
         {activeMeds.length === 0 && !isLoading && (
-          <View style={styles.warnBox}>
+          <View style={[styles.warnBox, isDark && { backgroundColor: '#291a04', borderColor: colors.amber700 }]}>
             <Ionicons name="warning-outline" size={18} color={colors.amber600} />
             <View style={styles.warnText}>
-              <Text style={styles.warnTitle}>No active medications</Text>
-              <Text style={styles.warnSub}>Add some medications first to create reminders for them.</Text>
+              <Text style={[styles.warnTitle, isDark && { color: colors.amber300 }]}>No active medications</Text>
+              <Text style={[styles.warnSub, isDark && { color: colors.amber400 }]}>Add some medications first to create reminders for them.</Text>
             </View>
           </View>
         )}
 
         {/* Today's Schedule */}
-        <LinearGradient colors={[colors.amber50, colors.orange50]} style={styles.todayCard}>
+        <LinearGradient
+          colors={isDark ? [t.cardGradientAmber[0], t.cardGradientAmber[1]] : [colors.amber50, colors.orange50]}
+          style={[styles.todayCard, { borderColor: isDark ? colors.amber800 : colors.amber200 }]}
+        >
           <View style={styles.sectionHeader}>
             <Ionicons name="time-outline" size={18} color={colors.amber600} />
-            <Text style={styles.sectionTitle}>Today's Schedule ({format(new Date(), 'EEEE')})</Text>
+            <Text style={[styles.sectionTitle, { color: isDark ? colors.amber300 : colors.amber900 }]}>Today's Schedule ({format(new Date(), 'EEEE')})</Text>
           </View>
           {todaysReminders.length === 0 ? (
             <View style={styles.todayEmpty}>
               <Ionicons name="notifications-outline" size={36} color={colors.amber300} />
-              <Text style={styles.todayEmptyText}>No reminders scheduled for today</Text>
+              <Text style={[styles.todayEmptyText, { color: t.textMuted }]}>No reminders scheduled for today</Text>
             </View>
           ) : (
             todaysReminders.map(r => (
-              <View key={r.id} style={styles.todayItem}>
+              <View key={r.id} style={[styles.todayItem, { backgroundColor: t.surface, borderColor: isDark ? colors.amber800 : colors.amber100 }]}>
                 <Text style={styles.todayTime}>{r.time}</Text>
                 <View style={styles.todayInfo}>
                   <View style={styles.todayNameRow}>
                     <Ionicons name="medical-outline" size={14} color={colors.amber600} />
-                    <Text style={styles.todayMedName} numberOfLines={1}>{r.medication_name}</Text>
+                    <Text style={[styles.todayMedName, { color: t.text }]} numberOfLines={1}>{r.medication_name}</Text>
                   </View>
-                  {r.notes && <Text style={styles.todayNotes} numberOfLines={1}>{r.notes}</Text>}
+                  {r.notes && <Text style={[styles.todayNotes, { color: t.textFaint }]} numberOfLines={1}>{r.notes}</Text>}
                 </View>
               </View>
             ))
@@ -164,25 +187,25 @@ export default function Reminders() {
         </LinearGradient>
 
         {/* All Reminders */}
-        <Text style={styles.allTitle}>All Reminders</Text>
+        <Text style={[styles.allTitle, { color: t.text }]}>All Reminders</Text>
 
         {isLoading ? (
           [1,2,3].map(i => (
-            <View key={i} style={[styles.card, { marginBottom: 12 }]}>
+            <View key={i} style={[styles.card, { marginBottom: 12, backgroundColor: t.surface, borderColor: t.border }]}>
               <View style={{ flexDirection: 'row', gap: 12 }}>
-                <View style={{ width: 56, height: 44, backgroundColor: colors.slate200, borderRadius: 10 }} />
+                <View style={{ width: 56, height: 44, backgroundColor: t.border, borderRadius: 10 }} />
                 <View style={{ flex: 1, gap: 8 }}>
-                  <View style={{ height: 14, backgroundColor: colors.slate200, borderRadius: 6, width: '40%' }} />
-                  <View style={{ height: 12, backgroundColor: colors.slate200, borderRadius: 6, width: '60%' }} />
+                  <View style={{ height: 14, backgroundColor: t.border, borderRadius: 6, width: '40%' }} />
+                  <View style={{ height: 12, backgroundColor: t.border, borderRadius: 6, width: '60%' }} />
                 </View>
               </View>
             </View>
           ))
         ) : sortedReminders.length === 0 ? (
-          <View style={styles.emptyCard}>
+          <View style={[styles.emptyCard, { backgroundColor: t.surface, borderColor: t.border }]}>
             <Ionicons name="notifications-outline" size={56} color={colors.amber200} />
-            <Text style={styles.emptyTitle}>No reminders set</Text>
-            <Text style={styles.emptySub}>Create reminders to help you remember</Text>
+            <Text style={[styles.emptyTitle, { color: t.text }]}>No reminders set</Text>
+            <Text style={[styles.emptySub, { color: t.textMuted }]}>Create reminders to help you remember</Text>
             {activeMeds.length > 0 && (
               <AppButton gradient={gradients.amber} onPress={() => setShowForm(true)} style={{ marginTop: 8 }}>
                 + Create Your First Reminder
@@ -193,11 +216,14 @@ export default function Reminders() {
           sortedReminders.map(reminder => (
             <View
               key={reminder.id}
-              style={[styles.card, { marginBottom: 12 }, !reminder.is_active && styles.cardInactive]}
+              style={[styles.card, { marginBottom: 12, backgroundColor: t.surface, borderColor: t.border }, !reminder.is_active && styles.cardInactive]}
             >
               <View style={styles.reminderRow}>
                 {/* Time block */}
-                <View style={[styles.timeBlock, reminder.is_active ? styles.timeBlockActive : styles.timeBlockInactive]}>
+                <View style={[styles.timeBlock, reminder.is_active
+                  ? { backgroundColor: isDark ? colors.amber900 : colors.amber50, borderColor: isDark ? colors.amber700 : colors.amber100 }
+                  : { backgroundColor: isDark ? colors.slate700 : colors.slate50, borderColor: isDark ? colors.slate600 : colors.slate200 }
+                ]}>
                   <Text style={[styles.timeText, reminder.is_active ? styles.timeTextActive : styles.timeTextInactive]}>
                     {reminder.time}
                   </Text>
@@ -205,7 +231,7 @@ export default function Reminders() {
 
                 <View style={styles.reminderBody}>
                   <View style={styles.reminderTopRow}>
-                    <Text style={styles.reminderMedName} numberOfLines={1}>{reminder.medication_name}</Text>
+                    <Text style={[styles.reminderMedName, { color: t.text }]} numberOfLines={1}>{reminder.medication_name}</Text>
                     <View style={[styles.statusBadge, reminder.is_active ? styles.activeBadge : styles.pausedBadge]}>
                       <Ionicons
                         name={reminder.is_active ? 'checkmark-circle' : 'close-circle'}
@@ -227,14 +253,14 @@ export default function Reminders() {
                         <View key={day} style={[
                           styles.dayChip,
                           scheduled && isToday  ? styles.dayChipToday :
-                          scheduled             ? styles.dayChipScheduled :
-                                                  styles.dayChipOff,
+                          scheduled             ? (isDark ? { backgroundColor: colors.amber800 } : styles.dayChipScheduled) :
+                                                  (isDark ? { backgroundColor: colors.slate700 } : styles.dayChipOff),
                         ]}>
                           <Text style={[
                             styles.dayChipText,
                             scheduled && isToday  ? styles.dayChipTextToday :
-                            scheduled             ? styles.dayChipTextScheduled :
-                                                    styles.dayChipTextOff,
+                            scheduled             ? (isDark ? { color: colors.amber300 } : styles.dayChipTextScheduled) :
+                                                    (isDark ? { color: colors.slate400 } : styles.dayChipTextOff),
                           ]}>
                             {DAYS_SHORT[day]}
                           </Text>
@@ -243,7 +269,7 @@ export default function Reminders() {
                     })}
                   </View>
 
-                  {reminder.notes && <Text style={styles.noteText}>"{reminder.notes}"</Text>}
+                  {reminder.notes && <Text style={[styles.noteText, { color: t.textFaint }]}>"{reminder.notes}"</Text>}
                 </View>
 
                 {/* Controls */}

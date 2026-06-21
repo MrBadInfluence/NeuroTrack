@@ -1,25 +1,19 @@
-/**
- * StatCard — compact stat tile used in the Dashboard grid
- *
- * Props:
- *   icon     — render-prop accepting { size, color } (e.g. Ionicons)
- *   label    — description text shown above the value
- *   value    — large numeric value to display
- *   gradient — two-color array for the icon badge background
- */
-
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors } from '../../theme/colors';
+import { colors, getTheme } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 
 export default function StatCard({ icon: Icon, label, value, gradient }) {
+  const { isDark } = useTheme();
+  const t = getTheme(isDark);
+
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, { backgroundColor: t.surface, borderColor: t.border }]}>
       <View style={styles.row}>
         <View style={styles.textGroup}>
-          <Text style={styles.label} numberOfLines={2}>{label}</Text>
-          <Text style={styles.value}>{value}</Text>
+          <Text style={[styles.label, { color: t.textMuted }]} numberOfLines={2}>{label}</Text>
+          <Text style={[styles.value, { color: t.text }]}>{value}</Text>
         </View>
         <LinearGradient
           colors={gradient}
@@ -37,11 +31,9 @@ export default function StatCard({ icon: Icon, label, value, gradient }) {
 const styles = StyleSheet.create({
   card: {
     flex: 1,
-    backgroundColor: colors.white,
     borderRadius: 14,
     padding: 14,
     borderWidth: 1,
-    borderColor: colors.slate100,
     shadowColor: '#000',
     shadowOpacity: 0.04,
     shadowOffset: { width: 0, height: 2 },
@@ -59,14 +51,12 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 11,
-    color: colors.slate500,
     marginBottom: 4,
     lineHeight: 15,
   },
   value: {
     fontSize: 22,
     fontWeight: '800',
-    color: colors.slate900,
   },
   iconBadge: {
     width: 38,
