@@ -7,7 +7,7 @@
  * handle; the order is persisted in AsyncStorage across restarts.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   useWindowDimensions,
+  Animated,
 } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
@@ -56,6 +57,36 @@ export default function Dashboard() {
   const isLandscape = ww > wh;
   const insets = useSafeAreaInsets();
   const hPad = Math.max(16, Math.max(insets.left, insets.right) + 8);
+
+  // One Animated.Value per section key drives the jiggle rotation
+  const jiggleAnims = useRef(
+    Object.fromEntries(DEFAULT_SECTIONS.map(s => [s.key, new Animated.Value(0)]))
+  ).current;
+  const jiggleLoops = useRef({});
+
+  const startJiggle = () => {
+    DEFAULT_SECTIONS.forEach(({ key }, i) => {
+      const anim = jiggleAnims[key];
+      anim.setValue(i % 2 === 0 ? 0.3 : -0.3); // alternate phase for organic feel
+      const loop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(anim, { toValue: 1,  duration: 90, useNativeDriver: true }),
+          Animated.timing(anim, { toValue: -1, duration: 90, useNativeDriver: true }),
+        ])
+      );
+      loop.start();
+      jiggleLoops.current[key] = loop;
+    });
+  };
+
+  const stopJiggle = () => {
+    DEFAULT_SECTIONS.forEach(({ key }) => {
+      const loop = jiggleLoops.current[key];
+      if (loop) loop.stop();
+      Animated.spring(jiggleAnims[key], { toValue: 0, useNativeDriver: true }).start();
+    });
+    jiggleLoops.current = {};
+  };
 
   // Restore the saved section order from AsyncStorage on first render.
   // Any sections that were added after the order was saved are appended at the end.
@@ -116,6 +147,7 @@ export default function Dashboard() {
   const handleDragEnd = ({ data }) => {
     setSections(data);
     storageSet(SECTION_ORDER_KEY, JSON.stringify(data.map(s => s.key)));
+    stopJiggle();
   };
 
   // ── Render each section by key ──────────────────────────────────────────────
@@ -228,27 +260,37 @@ export default function Dashboard() {
   };
 
   // ── Draggable item renderer ─────────────────────────────────────────────────
-  const renderItem = ({ item, drag, isActive }) => (
-    <ScaleDecorator activeScale={0.97}>
-      <View style={[styles.sectionWrapper, isActive && styles.sectionActive]}>
-        {/* Section content — full width */}
-        <View style={styles.sectionContent}>
-          {renderSection(item.key)}
-        </View>
+  const renderItem = ({ item, drag, isActive }) => {
+    const rotate = jiggleAnims[item.key].interpolate({
+      inputRange: [-1, 0, 1],
+      outputRange: ['-2.5deg', '0deg', '2.5deg'],
+    });
+    return (
+      <ScaleDecorator activeScale={0.97}>
+        <Animated.View style={[
+          styles.sectionWrapper,
+          isActive && styles.sectionActive,
+          !isActive && { transform: [{ rotate }] },
+        ]}>
+          <View style={styles.sectionContent}>
+            {renderSection(item.key)}
+          </View>
 
-        {/* Drag handle — top-right corner, long press to reorder */}
-        <TouchableOpacity
-          onLongPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); drag(); }}
-          delayLongPress={350}
-          style={[styles.dragHandle, { backgroundColor: t.handleBg }]}
-          activeOpacity={0.5}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Ionicons name="reorder-three-outline" size={22} color={colors.slate400} />
-        </TouchableOpacity>
-      </View>
-    </ScaleDecorator>
-  );
+          {/* Hidden drag trigger — hold 2 s anywhere in the top-right zone */}
+          <TouchableOpacity
+            onLongPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+              startJiggle();
+              drag();
+            }}
+            delayLongPress={2000}
+            style={styles.hiddenDragHandle}
+            activeOpacity={1}
+          />
+        </Animated.View>
+      </ScaleDecorator>
+    );
+  };
 
   // ── Fixed header + stats (always at top, not draggable) ─────────────────────
   const ListHeader = (
@@ -354,14 +396,13 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 8,
   },
-  dragHandle: {
+  hiddenDragHandle: {
     position: 'absolute',
-    top: 6,
-    right: 6,
+    top: 0,
+    right: 0,
+    width: 80,
+    height: 60,
     zIndex: 10,
-    padding: 4,
-    borderRadius: 6,
-    backgroundColor: 'rgba(255,255,255,0.7)',
   },
   sectionContent: {},
 

@@ -9,7 +9,7 @@
 
 import React, { useState } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet, TouchableOpacity, Switch, RefreshControl,
+  View, Text, ScrollView, StyleSheet, TouchableOpacity, Switch, RefreshControl, Alert,
 } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -62,6 +62,9 @@ export default function Reminders() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setShowForm(false);
     },
+    onError: (err) => {
+      Alert.alert('Error', err?.message || 'Failed to save reminder. Please try again.');
+    },
   });
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => localClient.entities.MedicationReminder.update(id, data),
@@ -70,6 +73,9 @@ export default function Reminders() {
       queryClient.invalidateQueries({ queryKey: ['reminders'] });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setShowForm(false); setEditingReminder(null);
+    },
+    onError: (err) => {
+      Alert.alert('Error', err?.message || 'Failed to update reminder. Please try again.');
     },
   });
   const deleteMutation = useMutation({

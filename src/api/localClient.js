@@ -172,8 +172,15 @@ function makeEntity(entityName) {
   const table = TABLES[entityName];
 
   return {
-    /** Fetch from Supabase, cache on success. Fall back to cache when offline. */
+    /** Fetch from Supabase, cache on success. Fall back to cache when offline or unauthenticated. */
     async list(orderBy = '-created_date', limit = 100) {
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+
+      // No authenticated session (demo mode) — serve from local cache only so we
+      // don't overwrite locally-created records with Supabase's empty result set.
+      if (!userId) return readCache(table);
+
       try {
         let query = supabase.from(table).select('*');
         if (orderBy) {
@@ -195,7 +202,7 @@ function makeEntity(entityName) {
       }
     },
 
-    /** Write to Supabase. If offline, save locally + queue for later sync. */
+    /** Write to Supabase. If offline or unauthenticated, save locally + queue for later sync. */
     async create(data) {
       const now = new Date().toISOString();
 
@@ -205,6 +212,16 @@ function makeEntity(entityName) {
       const userId = session?.user?.id;
       const payload = { ...data, created_date: now, updated_date: now };
       if (userId) payload.user_id = userId;
+
+      // No authenticated session (demo mode) — store locally only, no Supabase attempt.
+      if (!userId) {
+        const id     = tempId();
+        const record = { ...payload, id };
+        const cached = await readCache(table);
+        cached.unshift(record);
+        await writeCache(table, cached);
+        return record;
+      }
 
       try {
         const { data: row, error } = await supabase

@@ -69,6 +69,9 @@ export default function Medications() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setShowForm(false);
     },
+    onError: (err) => {
+      Alert.alert('Error', err?.message || 'Failed to save medication. Please try again.');
+    },
   });
 
   const updateMutation = useMutation({
@@ -78,6 +81,9 @@ export default function Medications() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setShowForm(false);
       setEditingMed(null);
+    },
+    onError: (err) => {
+      Alert.alert('Error', err?.message || 'Failed to update medication. Please try again.');
     },
   });
 

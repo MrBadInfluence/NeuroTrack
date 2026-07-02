@@ -37,16 +37,31 @@ const COMMON_MEDICATIONS = [
   { name: 'Diazepam',        brand: 'Valium' },
 ];
 
+const toDisplayDate = (iso) => {
+  if (!iso) return '';
+  const [y, m, d] = iso.split('-');
+  return `${d}-${m}-${y}`;
+};
+
+const toISODate = (display) => {
+  if (!display) return '';
+  const [d, m, y] = display.split('-');
+  return `${y}-${m}-${d}`;
+};
+
 export default function MedicationForm({ medication, onSubmit, onCancel, isLoading }) {
-  const [formData, setFormData] = useState(medication || {
-    name: '',
-    dosage: '',
-    frequency: '',
-    purpose: '',
-    prescribing_doctor: '',
-    start_date: new Date().toISOString().split('T')[0],
-    notes: '',
-    is_active: true,
+  const [formData, setFormData] = useState(() => {
+    if (medication) return { ...medication, start_date: toDisplayDate(medication.start_date) };
+    return {
+      name: '',
+      dosage: '',
+      frequency: '',
+      purpose: '',
+      prescribing_doctor: '',
+      start_date: toDisplayDate(new Date().toISOString().split('T')[0]),
+      notes: '',
+      is_active: true,
+    };
   });
 
   const [query,        setQuery]        = useState(medication?.name || '');
@@ -152,8 +167,8 @@ export default function MedicationForm({ medication, onSubmit, onCancel, isLoadi
       <View style={{ height: 14 }} />
       <AppInput label="Prescribing Doctor" value={formData.prescribing_doctor} onChangeText={v => update('prescribing_doctor', v)} placeholder="e.g. Dr. Smith" />
       <View style={{ height: 14 }} />
-      <AppInput label="Start Date" value={formData.start_date} onChangeText={v => update('start_date', v)} placeholder="yyyy-MM-dd" />
-      <Text style={styles.hint}>Format: 2025-01-15</Text>
+      <AppInput label="Start Date" value={formData.start_date} onChangeText={v => update('start_date', v)} placeholder="dd-mm-yyyy" />
+      <Text style={styles.hint}>Format: 15-01-2025</Text>
       <View style={{ height: 14 }} />
       <AppInput label="Notes" value={formData.notes} onChangeText={v => update('notes', v)} placeholder="Any additional info..." multiline numberOfLines={3} />
 
@@ -179,7 +194,7 @@ export default function MedicationForm({ medication, onSubmit, onCancel, isLoadi
         <AppButton variant="outline" onPress={onCancel} style={styles.btn}>Cancel</AppButton>
         <AppButton
           gradient={[colors.emerald600, colors.teal600]}
-          onPress={() => onSubmit(formData)}
+          onPress={() => onSubmit({ ...formData, start_date: toISODate(formData.start_date) })}
           loading={isLoading}
           disabled={!formData.name || !formData.dosage}
           style={styles.btn}

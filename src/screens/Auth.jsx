@@ -80,21 +80,50 @@ export default function Auth({ onAuthenticated, onSkip }) {
       const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUri);
 
       if (result.type === 'success' && result.url) {
-        // exchangeCodeForSession handles both PKCE (default in Supabase v2)
-        // and Implicit flows — it reads whichever token format is in the URL.
-        const { data: sessionData, error: sessionError } = await supabase.auth.exchangeCodeForSession(result.url);
-        if (sessionError) throw sessionError;
-        if (sessionData?.session) {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          onAuthenticated();
+        const redirectUrl = result.url;
+
+        // Parse query and fragment params (avoids false-positive match on error_code=)
+        const queryStr = redirectUrl.includes('?') ? redirectUrl.split('?')[1].split('#')[0] : '';
+        const fragStr  = redirectUrl.includes('#') ? redirectUrl.split('#')[1] : '';
+        const qp = new URLSearchParams(queryStr);
+        const fp = new URLSearchParams(fragStr);
+
+        const code          = qp.get('code');
+        const access_token  = fp.get('access_token') || qp.get('access_token');
+        const refresh_token = fp.get('refresh_token') || qp.get('refresh_token') || '';
+        const oauthError    = qp.get('error') || fp.get('error');
+
+        if (oauthError) {
+          const desc = qp.get('error_description') || fp.get('error_description') || oauthError;
+          throw new Error(desc);
+        }
+
+        if (code) {
+          // PKCE flow — code in query params, verifier stored by signInWithOAuth
+          const { data: sessionData, error: sessionError } = await supabase.auth.exchangeCodeForSession(redirectUrl);
+          if (sessionError) throw sessionError;
+          if (sessionData?.session) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            onAuthenticated();
+          }
+        } else if (access_token) {
+          // Implicit flow — tokens in URL fragment
+          const { data: sessionData, error: sessionError } = await supabase.auth.setSession({ access_token, refresh_token });
+          if (sessionError) throw sessionError;
+          if (sessionData?.session) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            onAuthenticated();
+          }
+        } else {
+          throw new Error('Google sign-in returned an unexpected response. Please try again.');
         }
       }
-      // result.type === 'cancel' or 'dismiss' means the user closed the browser — do nothing.
+      // result.type === 'cancel' or 'dismiss' — user closed the browser, do nothing.
     } catch (err) {
       console.error('[NeuroTrack] Google sign-in error:', err?.message, err);
       Alert.alert(
         'Google Sign-In Failed',
-        err?.message || 'An unexpected error occurred. Check that Google OAuth is enabled in your Supabase project and that the redirect URI is whitelisted.',
+        err?.message || 'An unexpected error occurred. Please try again.',
       );
     } finally {
       setGoogleLoading(false);
